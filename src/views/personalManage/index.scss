@@ -1,0 +1,85 @@
+
+	
+.card-header{
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+:deep(.el-divider--horizontal){
+	margin: 12px 0;
+}
+
+
+:deep(.el-card__header){
+	padding: 10px;
+}
+
+.page-container {
+	display: flex;
+	flex-wrap: nowrap;
+	width: 100%;
+	.group {
+	  width: 210px;
+	  margin-right: 20px;
+	  :deep(.el-card__body){
+		padding: 0 ;
+		padding-right: 10px;
+		padding-bottom: 10px;
+	  }
+	}
+	.person {
+	  flex: calc(100% - 230px);
+	}
+  }
+
+ul {
+	width: 100%;
+	padding: 0;
+	margin: 0;
+	li {
+	  display: flex;
+	  align-items: center;
+	  padding:0 30px;
+	  list-style-type: none;
+	  height: 40px;
+	  position: relative;
+	  &:hover {
+		border-radius: 12px;
+		color: #06a7ff;
+		background-color: #eef9fe;
+		cursor: pointer;
+		.more{
+			display: block;
+		}
+	  }
+	
+	  .more{
+		display:none;
+		position: absolute;
+		top: 15px;
+		right: 30px;
+		:deep(.el-icon){
+			&:focus-visible {
+				outline:none
+			}
+		}
+		
+		
+	  }
+	  
+	}
+	.active {
+		border-radius: 12px;
+		color: #06a7ff;
+		background-color: #eef9fe;
+		cursor: pointer;
+		.more{
+			display: block;
+		}
+		}
+  }
+
+  :deep(.el-dropdown-menu__item){
+	padding: 8px 16px;
+	border-bottom: 1px solid #eeeeee;
+ }

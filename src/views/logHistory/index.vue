@@ -1,0 +1,272 @@
+<template>
+  <el-card>
+    <div class="query-condition">
+      <el-form :inline="true">
+        <el-form-item label="操作类型:">
+          <el-select
+            v-model="queryParams.type"
+            placeholder="请选择操作类型"
+            @change="getLogList()"
+            style="margin-bottom: 12px; margin-right: 12px"
+          >
+            <el-option label="全部" value="" />
+            <el-option v-for="(value, key) in opreationType" :key="key" :label="value" :value="key" />
+          </el-select>
+        </el-form-item>
+        <!-- <el-form-item label="查询文件:">
+      <el-upload
+        class="upload-demo"
+        accept="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        :action='fileTraceUrl'
+        :headers='headers'
+        :on-success="getTraceFileId"
+        :on-error="getTraceFailed"
+        :show-file-list='true'
+        v-model:file-list="fileList"
+      >
+        <el-button type="primary" title="仅支持 docx/xlsx/ppt/pdf 格式文件的查询">选择查询文件</el-button>
+      </el-upload>
+    </el-form-item>
+    <el-form-item style='margin-top:-10px'>
+      <el-button type="primary" @click="getLogList">点击查询</el-button>
+    </el-form-item> -->
+      </el-form>
+    </div>
+    <el-table stripe :data="logList" style="width: 100%">
+      <el-table-column prop="createdTime" width="180" align="center">
+        <template #header>
+          <el-icon>
+            <Calendar />
+          </el-icon>
+          <span>操作时间</span>
+        </template>
+        <template #default="scope">
+          <div>
+            {{ scope.row.createdTime }}
+          </div>
+        </template>
+      </el-table-column>
+      <el-table-column width="220" align="center">
+        <template #header>
+          <el-icon><Operation /></el-icon>
+          <span>操作类型</span>
+        </template>
+        <template #default="scope">
+          <div>
+            {{ scope.row.type }}
+          </div>
+        </template>
+      </el-table-column>
+      <el-table-column>
+        <template #header>
+          <el-icon>
+            <Document />
+          </el-icon>
+          <span>操作内容</span>
+        </template>
+        <template #default="scope">
+          <div>
+            {{ scope.row.message }}
+          </div>
+        </template>
+      </el-table-column>
+      <!-- <el-table-column label="操作" width="160">
+        <template #default="scope">
+          <el-button
+            size="small"
+            type="danger"
+            @click="handleDelete(scope.row)"
+            >删除</el-button
+          >
+        </template>
+      </el-table-column> -->
+    </el-table>
+    <div class="page-container">
+      <el-pagination
+        v-model:current-page="pageInfo.page"
+        v-model:page-size="pageInfo.size"
+        background
+        :page-sizes="[10, 15, 20, 25]"
+        layout="total, sizes, prev, pager, next, jumper"
+        :total="pageInfo.totalNum"
+        @size-change="handleSizeChange"
+        @current-change="handleCurrentChange"
+      />
+    </div>
+  </el-card>
+</template>
+
+<script setup lang="ts">
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { dateToString } from '@/utils/dateTool'
+import { getfileLogPage, deletefileLogById } from '@/api/modules/file'
+import { GlobalStore } from '@/stores'
+const globalStore = GlobalStore()
+const tableRowClassName = ({ row, rowIndex }: { row: any; rowIndex: number }) => {
+  if (rowIndex % 2 === 0) {
+    return 'warning-row'
+  } else {
+    return 'success-row'
+  }
+}
+let fileTraceUrl = ref('')
+let headers = ref({
+  Authorization: ''
+})
+let fileList = ref([])
+let queryParams = ref({
+  endTime: '',
+  fileFolderId: '',
+  level: '',
+  message: '',
+  page: 0,
+  size: 10,
+  sort: 'createdTime,DESC',
+  startTime: '',
+  type: ''
+})
+let pageInfo = ref({
+  totalNum: 0,
+  page: 1,
+  size: 10
+})
+let opreationType = ref({
+  CREATE_FILE: '上传文件',
+  DOWN_LOAD_FILE: '下载文件',
+  DELETE_FILE: '删除文件',
+  RESTORE_FILE: '恢复文件',
+  COPY_FILE: '复制文件',
+  MOVE_FILE: '移动文件',
+  AUTH_FILE: '赋予权限',
+  CREATE_CATEGORY: '上传文件夹',
+  DELETE_CATEGORY: '删除文件夹',
+  RESTORE_CATEGORY: '恢复文件夹',
+  COPY_CATEGORY: '复制文件夹',
+  MOVE_CATEGORY: '移动文件夹',
+  AUTH_CATEGORY: '赋予权限'
+})
+watch(
+  () => fileList.value.length,
+  length => {
+    console.log(fileList.value)
+  }
+)
+onMounted(() => {
+  fileTraceUrl.value = window.appsetings.base_URL + '/file/get/file-type'
+  headers.value.Authorization = 'Bearer' + globalStore.token
+  getLogList()
+})
+let logList = ref([])
+const getLogList = () => {
+  const query = {}
+  Object.keys(queryParams.value).forEach(key => {
+    if (queryParams.value[key] !== '' && queryParams.value[key] !== undefined) {
+      query[key] = queryParams.value[key]
+    }
+  })
+  getfileLogPage({ ...query, isDeleted: false, sort: 'createdTime,DESC' }).then((res: any) => {
+    if (res && res.content && res.content.length) {
+      res.content.forEach((ele: any) => {
+        ele.createdTime = dateToString(ele.createdTime)
+        ele.lastUpdatedTime = dateToString(ele.lastUpdatedTime)
+        ele.type = opreationType.value[ele.type]
+        console.log(ele.type)
+      })
+    }
+    pageInfo.value.totalNum = res.totalElements
+    logList.value = res.content
+    console.log(logList)
+  })
+}
+function handleDelete(row: any) {
+  ElMessageBox.confirm('确定删除此条日志么?', '警告', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  })
+    .then(() => {
+      deletefileLogById(row.id).then(res => {
+        ElMessage.success('删除成功')
+        getLogList()
+      })
+    })
+    .catch(() => {
+      ElMessage({
+        type: 'info',
+        message: '取消删除'
+      })
+    })
+}
+function handleSizeChange(val: any) {
+  queryParams.value.size = val
+  getLogList()
+}
+function handleCurrentChange(val: any) {
+  queryParams.value.page = val - 1
+  getLogList()
+}
+function getTraceFileId(response: any) {
+  let resultArr = []
+  if (response) {
+    resultArr = response.split('_')
+    if (!resultArr[2]) {
+      ElMessage({
+        message: '查询失败',
+        type: 'error'
+      })
+      logList.value = []
+      queryParams.value.fileFolderId = ''
+      return
+    }
+    queryParams.value.fileFolderId = resultArr[2]
+    queryParams.value.page = 0
+    queryParams.value.size = 10
+    getLogList()
+  } else {
+    ElMessage({
+      message: '查询失败',
+      type: 'error'
+    })
+    logList.value = []
+    queryParams.value.fileFolderId = ''
+  }
+}
+function getTraceFailed(error: any) {
+  console.log(error)
+  ElMessage({
+    message: '查询失败',
+    type: 'error'
+  })
+  logList.value = []
+  queryParams.value.fileFolderId = ''
+}
+</script>
+
+<style scoped lang="scss">
+.main {
+  margin-top: 40px;
+  margin-bottom: 40px;
+}
+.page-container {
+  width: fit-content;
+  margin: 0 auto;
+  margin-top: 24px;
+}
+.query-condition {
+  display: flex;
+}
+:deep() {
+  .el-table__header-wrapper .el-icon {
+    font-size: 1rem;
+    line-height: 1.5rem;
+    top: 0.125rem;
+    margin-right: 0.5rem;
+  }
+  .el-table .warning-row {
+    --el-table-tr-bg-color: var(--el-color-warning-light-9);
+  }
+  .el-table .success-row {
+    --el-table-tr-bg-color: var(--el-color-success-light-9);
+  }
+}
+</style>
