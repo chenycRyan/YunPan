@@ -1,6 +1,6 @@
 <template>
   <el-card class="group">
-    <template #header>
+    <template #header v-if="isAdmin">
       <div class="card-header" v-show="depName">当前群组 ：{{ depName }}</div>
       <el-divider border-style="dashed" v-show="depName" />
       <div class="card-header">
@@ -12,8 +12,7 @@
     <ul>
       <li v-for="item in tableData" :key="item.id" :class="{ active: depId == item.id }" @click="handleNodeClick(item)">
         <span>{{ item.name }}</span>
-
-        <el-dropdown class="more" trigger="click" @command="handleCommand">
+        <el-dropdown class="more" trigger="click" @command="handleCommand" v-if="item.id > 0">
           <el-icon><MoreFilled /></el-icon>
           <template #dropdown>
             <el-dropdown-menu>
@@ -25,7 +24,7 @@
                 <el-icon><Plus /></el-icon>
                 <span>添加成员</span>
               </el-dropdown-item>
-              <el-dropdown-item :command="{ type: 'delete', command: item }">
+              <el-dropdown-item v-if="isAdmin" :command="{ type: 'delete', command: item }">
                 <el-icon><Delete /></el-icon>
                 <span>删除群组</span>
               </el-dropdown-item>
@@ -34,17 +33,30 @@
         </el-dropdown>
       </li>
     </ul>
-    <Pages :total="tableTotal" layout="prev, pager, next" @search="searchData"></Pages>
+    <!-- <Pages :total="tableTotal" layout="prev, pager, next" @search="searchData"></Pages> -->
     <Member ref="memberRef" @search-person="handleNodeClick"></Member>
   </el-card>
 </template>
 <script setup>
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { apiFun } from '@/api/apiFun'
-import { updateDepartment } from '@/api/modules/department'
+import { updateDepartment, getAuthDepartment } from '@/api/modules/department'
 import Member from './member.vue'
+import { GlobalStore } from '@/stores'
+const globalStore = GlobalStore()
+const { isAdmin, isManage } = storeToRefs(globalStore)
 const departmentApi = apiFun('/departments')
-const emits = defineEmits(['searchPerson', 'addPerson'])
+const emits = defineEmits(['searchPerson', 'addPerson', 'reset'])
+const props = defineProps({
+  id: {
+    type: Number,
+    default: -1
+  },
+  name: {
+    type: String,
+    default: '全部用户'
+  }
+})
 onMounted(() => {
   getDepartment()
 })
@@ -60,24 +72,39 @@ const searchData = params => {
   queryForm.size = params.size
   getDepartment()
 }
-let depId = ref()
-let depName = ref()
+watch(
+  () => props.id,
+  () => {
+    depId.value = props.id
+    depName.value = props.name
+  }
+)
+let depId = ref(-1)
+let depName = ref('全部用户')
 const handleNodeClick = row => {
   depId.value = row.id
   depName.value = row.name
   emits('searchPerson', row.id)
 }
 const handleAddPerson = () => {
-  emits('addPerson')
+  emits('addPerson', depId.value)
 }
 const getDepartment = () => {
-  let params = {
-    ...queryForm,
-    sort: 'createdTime,DESC'
-  }
-  departmentApi.findPage(params).then(res => {
-    tableData.value = res.content
-    tableTotal.value = res.totalElements
+  // let params = {
+  //   ...queryForm,
+  //   sort: 'createdTime,DESC'
+  // }
+  // departmentApi.findPage(params)
+  getAuthDepartment().then(res => {
+    tableData.value = res //.content
+    if (isAdmin.value) {
+      tableData.value.unshift({
+        id: -1,
+        name: '全部用户'
+      })
+    }
+
+    // tableTotal.value = res.totalElements
   })
 }
 const handleAddGroup = () => {
@@ -118,7 +145,7 @@ const handleEditGroup = row => {
     updateDepartment(row.id, {
       id: row.id,
       name: value,
-      tenantId: row.tenantId
+      tenantId: 1
     }).then(() => {
       ElMessage.success('修改成功')
       getDepartment()
@@ -134,6 +161,7 @@ const handleDeleteGroup = row => {
     departmentApi.deleteItem(row.id).then(() => {
       ElMessage.success('删除成功')
       getDepartment()
+      emits('reset')
     })
   })
 }
@@ -147,6 +175,7 @@ const handleCommand = ({ type, command }) => {
     memberRef.value.initDialog(command)
   }
 }
+defineExpose({ depId, depName })
 </script>
 <style lang="scss" scoped>
 @import '../index.scss';

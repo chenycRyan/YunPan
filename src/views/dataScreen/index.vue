@@ -1,25 +1,6 @@
 <template>
   <div class="page-container">
-    <el-header>
-      <div class="header-box">
-        <div class="item"><img src="@/assets/images/header/logo.png" alt="" /> 汇博机器人云盘管理</div>
-        <div style="display: flex; align-items: center">
-          <el-dropdown trigger="click" style="cursor: pointer">
-            <div class="username">{{ userInfo.real_name }}</div>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item @click="logout" divided>
-                  <el-icon><SwitchButton /></el-icon>登出
-                </el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
-          <div class="item cursor ml-10" @click="toAdminPage" v-if="isAdmin || isManage">
-            <el-icon class="icon" size="18"><HomeFilled /></el-icon> <span>返回后台</span>
-          </div>
-        </div>
-      </div>
-    </el-header>
+    <CommonHeader></CommonHeader>
 
     <el-container>
       <el-container>
@@ -27,6 +8,7 @@
           @filter-file="handleFilterFile"
           @home-page="homePage"
           @back-home="backHome"
+          @public-file="asidePublic"
           @recycle="getRecycleList"
           @share="getShareList"
           @browser="getBrowserList"
@@ -39,18 +21,18 @@
             <div>
               <!-- 回收站 -->
               <template v-if="isRecycleStation">
-                <el-button v-if="selectRows.length" type="primary" plain @click="batchRecycle">
+                <el-button v-if="selectRows.length" type="primary" plain @click="batchRecycle()">
                   <el-icon><RefreshLeft /></el-icon>
                   全部还原
                 </el-button>
-                <el-button v-if="selectRows.length" type="primary" plain @click="batchDeleteTrue">
+                <el-button v-if="selectRows.length" type="primary" plain @click="batchDeleteTrue()">
                   <el-icon><Delete /></el-icon>
                   全部删除
                 </el-button>
               </template>
               <template v-else>
                 <template v-if="selectRows.length === 0">
-                  <el-button type="primary" plain v-show="permission.upload" @click="handleUpload">
+                  <el-button type="primary" style="color: #5fd2c6" plain v-show="permission.upload" @click="handleUpload">
                     <el-icon><UploadFilled /></el-icon>上传</el-button
                   >
                   <el-divider direction="vertical" v-show="permission.newFolder" />
@@ -92,24 +74,36 @@
                     删除
                   </el-button>
                   <el-divider direction="vertical" v-show="permission.delete" @click="batchDelete" />
-                  <el-button type="primary" plain @click="batchAllot" v-show="permission.allot && selectRows.length === 1">
+
+                  <el-button type="primary" plain @click="batchAllot" v-show="permission.allot">
                     <el-icon><Guide /></el-icon>
                     分配权限
                   </el-button>
-                  <el-divider direction="vertical" v-show="permission.allot && selectRows.length === 1" />
+
+                  <el-divider direction="vertical" v-show="permission.allot" />
                   <el-button type="primary" plain @click="batchShare" v-show="permission.link">
                     <el-icon><Link /></el-icon>
                     分享文件
                   </el-button>
+                  <el-divider direction="vertical" v-show="permission.link" />
+                  <el-button
+                    type="primary"
+                    plain
+                    @click="batchSetOpen && selectRows.length === 1 && selectRow.type === 'FOLDER'"
+                    v-show="permission.open"
+                  >
+                    <el-icon><FolderChecked /></el-icon>
+                    {{ selectRow?.status === 'COMMON' ? '取消公开' : '公开文件' }}
+                  </el-button>
                 </template>
-                <el-divider direction="vertical" v-show="permission.allot" />
+                <el-divider direction="vertical" v-show="permission.allot && permission.download" />
                 <el-button type="primary" plain @click="dialogDownloadRef.initDialog()">
                   <el-icon><Sort /></el-icon>
                   下载列表
                 </el-button>
               </template>
             </div>
-            <div v-if="currentRow.name === '全部文件'">
+            <div>
               <el-input
                 v-model="queryFileName"
                 placeholder="请输入文件名"
@@ -138,15 +132,16 @@
           <el-table
             v-else
             ref="fileTableRef"
-            :data="tableData"
+            :data="filterTableData"
             style="width: 100%"
+            class="mt-10"
             :row-class-name="tableRowClassName"
             @row-dblclick="tableDbClickRow"
             @row-contextmenu="showFileMenu"
             @cell-mouse-enter="tableHoverRow"
             @cell-mouse-leave="tableLeaveRow"
             @selection-change="selectRowsChange"
-            height="75vh"
+            max-height="75vh"
           >
             <template #empty>
               <div>
@@ -155,8 +150,8 @@
               </div>
             </template>
 
-            <el-table-column width="30px" type="selection" :selectable="checkSelectable"> </el-table-column>
-            <el-table-column prop="name">
+            <el-table-column width="40px" type="selection" :selectable="checkSelectable"> </el-table-column>
+            <el-table-column prop="name" min-width="180px">
               <template #header>
                 <el-icon>
                   <Document />
@@ -173,22 +168,65 @@
                   </el-skeleton>
                 </div>
                 <div v-show="!skeletonLoading" class="row-name flex-align" @click="tableClickRow(scope.row)">
-                  <svg-icon name="PICTURE" v-if="scope.row.type === 'PICTURE'" class="svg-icon"></svg-icon>
-                  <!-- <img :src="scope.row.fileUrl" class="svg-icon" v-if="scope.row.type === 'PICTURE'" alt="" /> -->
+                  <div v-if="scope.row.type === 'PICTURE'">
+                    <img :src="scope.row.fileUrl" v-if="scope.row.fileUrl" class="svg-icon" alt="" />
+                    <svg-icon name="PICTURE" v-else class="svg-icon"></svg-icon>
+                  </div>
                   <svg-icon name="MP4" v-else-if="scope.row.type === 'VIDEO'" class="svg-icon"></svg-icon>
-                  <svg-icon name="Folder" v-else-if="scope.row.type === 'FOLDER'" class="svg-icon"></svg-icon>
+                  <svg-icon name="FOLDER" v-else-if="scope.row.type === 'FOLDER'" class="svg-icon"></svg-icon>
                   <svg-icon :name="displayFileType(scope.row.name)" v-else class="svg-icon"></svg-icon>
-                  <span>{{ scope.row.name }}</span>
+
+                  <el-tooltip :content="scope.row.name" placement="bottom">
+                    <div class="text_ellipsis">{{ scope.row.name }}</div>
+                    {{ scope.row.name }}
+                  </el-tooltip>
                 </div>
               </template>
             </el-table-column>
-
+            <el-table-column prop="time" align="center" sortable width="120px">
+              <template #header>
+                <el-icon><User /></el-icon>
+                <span>创建人</span>
+              </template>
+              <template #default="scope">
+                <div v-show="skeletonLoading">
+                  <el-skeleton animated>
+                    <template #template>
+                      <el-skeleton-item variant="text" class="w-100" />
+                    </template>
+                  </el-skeleton>
+                </div>
+                <div v-show="!skeletonLoading">
+                  {{ scope.row.createdByName }}
+                </div>
+              </template>
+            </el-table-column>
+            <el-table-column prop="createdTime" align="center" sortable width="220px">
+              <template #header>
+                <el-icon>
+                  <Calendar />
+                </el-icon>
+                <span>创建时间</span>
+              </template>
+              <template #default="scope">
+                <div v-show="skeletonLoading">
+                  <el-skeleton animated>
+                    <template #template>
+                      <el-skeleton-item variant="text" class="w-100" />
+                    </template>
+                  </el-skeleton>
+                </div>
+                <div v-show="!skeletonLoading">
+                  {{ scope.row.createdTime }}
+                </div>
+              </template>
+            </el-table-column>
             <el-table-column prop="time" align="center" sortable width="220px">
               <template #header>
                 <el-icon>
                   <Calendar />
                 </el-icon>
-                <span>修改时间</span>
+                <span>{{ isRecycleStation ? '删除时间' : '修改时间' }}</span>
               </template>
               <template #default="scope">
                 <div v-show="!scope.row.showDelBtn">
@@ -200,21 +238,44 @@
                     </el-skeleton>
                   </div>
                   <div v-show="!skeletonLoading">
-                    {{ scope.row.time }}
+                    {{ scope.row.lastUpdatedTime }}
                   </div>
                 </div>
-                <el-button link class="delText" v-show="scope.row.showDelBtn" @click="batchRecycle">
+                <el-button link class="delText" v-show="scope.row.showDelBtn" @click="batchRecycle(scope.row)">
                   <el-icon><RefreshLeft /></el-icon>
                   <span class="ml-3">还原</span>
                 </el-button>
-                <el-button link class="delText" v-show="scope.row.showDelBtn" @click="batchDeleteTrue">
+                <el-button link class="delText" type="danger" v-show="scope.row.showDelBtn" @click="batchDeleteTrue(scope.row)">
                   <el-icon><Delete /></el-icon>
                   <span class="ml-3">删除</span>
                 </el-button>
               </template>
             </el-table-column>
+            <el-table-column prop="path" sortable width="140px" v-if="isPublicFolder">
+              <!-- 表头 -->
+              <template #header>
+                <el-icon>
+                  <Coin />
+                </el-icon>
+                <span>路径</span>
+              </template>
+              <template #default="scope">
+                <!-- 骨架屏 -->
+                <div v-show="skeletonLoading">
+                  <el-skeleton animated>
+                    <template #template>
+                      <el-skeleton-item variant="text" class="w-80" />
+                    </template>
+                  </el-skeleton>
+                </div>
+                <!-- 数据 -->
+                <div v-show="!skeletonLoading">
+                  {{ scope.row.path }}
+                </div>
+              </template>
+            </el-table-column>
 
-            <el-table-column prop="size" sortable width="140px">
+            <el-table-column prop="size" align="center" sortable width="100px" v-if="!isPublicFolder">
               <!-- 表头 -->
               <template #header>
                 <el-icon>
@@ -237,7 +298,7 @@
                 </div>
               </template>
             </el-table-column>
-            <el-table-column prop="size" align="center" width="160px">
+            <el-table-column prop="size" align="center" width="100px">
               <!-- 表头 -->
               <template #header>
                 <el-icon>
@@ -261,7 +322,7 @@
                 </div>
               </template>
             </el-table-column>
-            <el-table-column align="center" sortable width="160px">
+            <el-table-column align="center" sortable width="100px">
               <!-- 表头 -->
               <template #header>
                 <el-icon>
@@ -279,26 +340,68 @@
                   </el-skeleton>
                 </div>
                 <!-- 数据 -->
-                <div v-show="!skeletonLoading">
-                  <el-tooltip
-                    class="box-item"
-                    effect="dark"
-                    v-if="scope.row.auth"
-                    :content="filterLevel(scope.row.auth)"
-                    placement="bottom"
-                  >
-                    <img :src="useImage(`images/level/${scope.row.auth}.png`)" class="levelImg" alt="" />
-                  </el-tooltip>
+                <div v-show="!skeletonLoading" v-if="scope.row.type === 'FOLDER'">
+                  <div v-if="isAdmin">
+                    <el-tooltip
+                      v-if="scope.row.status === 'COMMON'"
+                      class="box-item"
+                      effect="dark"
+                      content="所有人均可操作文件"
+                      placement="bottom"
+                    >
+                      <img :src="useImage(`images/level/OPEN.png`)" @click="openDetail(scope.row)" class="levelImg" alt="" />
+                    </el-tooltip>
+                    <el-tooltip class="box-item" effect="dark" v-else content="最高权限" placement="bottom">
+                      <img :src="useImage(`images/level/FIVE.png`)" @click="openDetail(scope.row)" class="levelImg" alt="" />
+                    </el-tooltip>
+                  </div>
+                  <div v-else>
+                    <el-tooltip
+                      class="box-item"
+                      effect="dark"
+                      v-if="scope.row.status === 'AUTH' && scope.row.auth"
+                      :content="filterLevel(scope.row.auth)"
+                      placement="bottom"
+                    >
+                      <img
+                        :src="useImage(`images/level/${scope.row.auth}.png`)"
+                        @click="openDetail(scope.row)"
+                        class="levelImg"
+                        alt=""
+                      />
+                    </el-tooltip>
+                    <el-tooltip
+                      v-if="scope.row.status === 'COMMON'"
+                      class="box-item"
+                      effect="dark"
+                      content="所有人均可操作文件"
+                      placement="bottom"
+                    >
+                      <img :src="useImage(`images/level/OPEN.png`)" @click="openDetail(scope.row)" class="levelImg" alt="" />
+                    </el-tooltip>
+                  </div>
                 </div>
               </template>
             </el-table-column>
           </el-table>
+          <div class="pagination_box">
+            <el-pagination
+              v-if="tableData.length"
+              background
+              layout="prev, pager, next ,total,sizes"
+              :total="tableData.length"
+              @current-change="handleCurrentChange"
+              @size-change="handleSizeChange"
+            />
+            <div class="ml-10">文件夹：{{ folderCount }}</div>
+            <div class="ml-10">文件：{{ fileCount }}</div>
+          </div>
         </el-main>
       </el-container>
       <el-footer>Copyright ©2023 江苏汇博机器人技术股份有限公司</el-footer>
     </el-container>
     <!-- 右键菜单 -->
-    <Contextmenu ref="contextmenu" auto-ajust-placement>
+    <Contextmenu ref="contextmenuRef" auto-ajust-placement>
       <ContextmenuItem v-if="permission.download && selectFolders.length === 0" @click="batchDownloadFile">
         <el-icon><Download /></el-icon>
         <label>
@@ -329,18 +432,26 @@
       </ContextmenuItem>
 
       <ContextmenuDivider v-show="permission.rename || permission.delete"></ContextmenuDivider>
-      <ContextmenuItem v-show="permission.allot && selectRows.length === 1" @click="batchAllot">
+
+      <ContextmenuItem v-show="permission.allot" @click="batchAllot">
         <el-icon><Guide /></el-icon>
         <label>分配权限</label>
       </ContextmenuItem>
-      <ContextmenuItem v-show="permission.link && selectRows.length === 1" @click="batchShare">
+      <ContextmenuItem v-show="permission.link" @click="batchShare">
         <el-icon><Link /></el-icon>
         <label> 分享文件</label>
+      </ContextmenuItem>
+      <ContextmenuItem v-show="permission.open && selectRows.length === 1 && selectRow.type === 'FOLDER'" @click="batchSetOpen">
+        <el-icon><FolderChecked /></el-icon>
+        <label> {{ selectRow?.status === 'COMMON' ? '取消公开' : '公开文件' }} </label>
+      </ContextmenuItem>
+      <ContextmenuItem v-show="(isAdmin || isManage) && selectRows.length === 1" @click="openFileLog">
+        <el-icon><Tickets /></el-icon>
+        <label> 文件日志</label>
       </ContextmenuItem>
     </Contextmenu>
     <!-- 文件下载 -->
     <DialogDownload ref="dialogDownloadRef" @search="searchFile"></DialogDownload>
-
     <!-- 文件上传 -->
     <DialogUpload ref="dialogUploadRef" @search="searchFile" :uploadAcceptType="uploadAcceptType"></DialogUpload>
     <!-- 文件、文件夹操作 -->
@@ -349,16 +460,33 @@
     <DialogAllot ref="dialogAllotRef" @search="searchFile"></DialogAllot>
     <!-- 分享链接 -->
     <DialogShare ref="dialogShareRef" @search="searchFile"></DialogShare>
+    <!-- 文件日志 -->
+    <DialogFileLog ref="dialogFileLogRef"></DialogFileLog>
+    <!-- 文件详情 -->
+    <DialogDetail ref="dialogDetailRef"></DialogDetail>
 
     <el-dialog
       v-model="dialogTextVisible"
       draggable
       class="dialog-preview"
       :close-on-click-modal="false"
+      :close-on-press-escape="false"
       :title="dialogTextTitle"
+      :fullscreen="fullDialog"
       top="4vh"
       width="50vw"
     >
+      <template #header>
+        <div class="dialog_header">
+          <div>
+            <h2>{{ dialogTextTitle }}</h2>
+          </div>
+
+          <el-button @click="fullDialog = !fullDialog" circle>
+            <el-icon><FullScreen /></el-icon
+          ></el-button>
+        </div>
+      </template>
       <!-- 视频在线预览 -->
       <VideoPlayer
         v-if="preview.type === 'video'"
@@ -374,19 +502,44 @@
       <!-- Markdown在线预览 -->
       <MarkdownViewer v-if="preview.type === 'md'" :file-id="preview.mdId" />
       <!-- Doc文件在线预览 -->
-      <DocxViewer v-if="preview.type === 'docx'" :file-id="preview.docxId" />
+      <DocxViewer v-if="preview.type === 'docx'" :full="fullDialog" :file-id="preview.docxId" />
       <!--Xlsx文件在线预览 -->
-      <XlsxViewer v-if="preview.type === 'xlsx'" :file-id="preview.xlsxId" />
+      <XlsxViewer v-if="preview.type === 'xlsx'" :full="fullDialog" :file-id="preview.xlsxId" />
     </el-dialog>
-    <!-- <screen-short></screen-short> -->
+    <el-dialog
+      title="创建文件夹"
+      v-model="dialogVisible"
+      :before-close="closeDialog"
+      :close-on-click-modal="false"
+      :close-on-press-escape="false"
+      width="30vw"
+    >
+      <div class="tips">
+        在 <b>{{ currentRow.name }}</b> 下创建
+      </div>
+      <el-form ref="newFolderRef" :model="newFolderForm" :rules="rules" label-width="120px">
+        <el-form-item label="文件夹名称" prop="name">
+          <el-input v-model="newFolderForm.name" placeholder="请输入文件夹名称"></el-input>
+        </el-form-item>
+        <el-form-item label="文件夹权限" prop="authType" v-if="currentRow.status !== 'COMMON'">
+          <el-radio-group v-model="newFolderForm.authType">
+            <el-radio label="DEFAULT">默认文件</el-radio>
+            <el-radio label="PRIVATE">私人文件</el-radio>
+            <el-radio label="DEP_PRIVATE">部门文件</el-radio>
+          </el-radio-group>
+        </el-form-item>
+      </el-form>
+      <div class="flex-center just-end">
+        <el-button type="" @click="closeDialog">取消</el-button>
+        <el-button type="primary" @click="handleCreateFolder">确认</el-button>
+      </div>
+    </el-dialog>
   </div>
 </template>
 <script setup>
-// import screenShort from 'vue-web-screen-shot'
-import { resetRouter } from '@/routers/index'
-import Fullscreen from '@/layouts/components/Header/components/Fullscreen.vue'
+import CommonHeader from './components/CommonHeader.vue'
 import { downloadFromStream, sizeTostr } from '@/utils'
-import { displayFileType, filterFileType, filterFileClassify } from '@/utils/file'
+import { displayFileType, filterFileType } from '@/utils/file'
 // 右键菜单
 import { Contextmenu, ContextmenuDivider, ContextmenuItem } from 'v-contextmenu'
 import 'v-contextmenu/dist/themes/default.css'
@@ -394,16 +547,23 @@ import {
   getFileList,
   downloadFile,
   batchDeleteFile,
-  renameFile,
+  modifyFile,
   downloadFileToZip,
   addBrowserHistory,
-  getBrowserHistoryList,
   starFile,
-  cancelStarFile,
-  getFilesList
+  cancelStarFile
 } from '@/api/modules/file'
-import { LOGIN_URL } from '@/config/config'
-import { getFolderList, addFolder, renameFolder, batchDeleteFolder, batchDeleteFolderTrue } from '@/api/modules/folder'
+
+import {
+  getFolderList,
+  addFolder,
+  modifyFolder,
+  batchDeleteFolder,
+  batchDeleteFolderTrue,
+  batchSetFolder,
+  getSonFolder,
+  getCommomFolder
+} from '@/api/modules/folder'
 import { ElMessageBox, ElMessage, ElLoading } from 'element-plus'
 import useFileSelect from './hooks/useFileSelect.js'
 import DialogHandler from './components/DialogHandler.vue'
@@ -411,8 +571,10 @@ import DialogAllot from './components/DialogAllot.vue'
 import DialogShare from './components/DialogShare.vue'
 import DialogUpload from './components/DialogUpload.vue'
 import DialogDownload from './components/DialogDownload.vue'
+import DialogDetail from './components/DialogDetail.vue'
 import ShareList from './components/ShareList.vue'
 import BrowserList from './components/BrowserList.vue'
+import DialogFileLog from './components/DialogFileLog.vue'
 import HomePage from '@/views/home/index.vue'
 import LeftAside from '@/components/File/LeftAside.vue'
 import BreadCrumb from '@/components/File/BreadCrumb.vue'
@@ -426,16 +588,16 @@ import { v3ImgPreviewFn } from 'v3-img-preview-enhance'
 import useImage from '@/hooks/useImage'
 import { GlobalStore } from '@/stores'
 import { Search } from '@element-plus/icons-vue'
-const route = useRoute()
-const router = useRouter()
 const globalStore = GlobalStore()
 let leftSide = ref(null)
 let queryFileName = ref('')
+const fullDialog = ref(false)
 
 function getFileListByName() {
   if (queryFileName.value) {
     skeletonLoading.value = true
-    getFileList({ originName: queryFileName.value, deleted: isRecycleStation.value, type: curtType.value }).then(res => {
+    // type: curtType.value
+    getFileList({ originName: queryFileName.value, deleted: isRecycleStation.value }).then(res => {
       console.log(res)
       skeletonLoading.value = false
       if (res?.length) {
@@ -456,15 +618,20 @@ function getFileListByName() {
             watermark: item.watermark
           }
         })
+        filterShowTable()
       } else {
         tableData.value = []
       }
     })
   }
 }
-const userInfo = computed(() => globalStore.userInfo)
+
 const searchFile = () => {
-  curtType.value ? handleFilterFile(curtType.value, false) : getCurtFile({ deleted: false })
+  if (selectRow.value && selectRow.value.status === 'COMMON' && selectRow.value.type === 'FOLDER') {
+    getPublicList()
+  } else {
+    curtType.value ? handleFilterFile(curtType.value, false) : getCurtFile({ deleted: false })
+  }
 }
 const ifStar = async item => {
   // 回收站文件不执行收藏操作
@@ -473,7 +640,7 @@ const ifStar = async item => {
   }
   if (item.star) {
     await cancelStarFile(item.id)
-    getStarList()
+    // getStarList()
     ElMessage.success('取消收藏成功！')
   } else {
     await starFile(item.id)
@@ -486,7 +653,7 @@ const isRecycleStation = ref(false)
 //查询回收站列表
 const getRecycleList = () => {
   isRecycleStation.value = true
-  navShow.value = true
+  navShow.value = false
   showbtn.value = true
   currentRow.name = '全部文件'
   getCurtFile({ deleted: true })
@@ -529,6 +696,7 @@ const getStarList = () => {
           watermark: item.watermark
         }
       })
+      filterShowTable()
     } else {
       tableData.value = []
     }
@@ -546,11 +714,12 @@ const getBrowserList = () => {
 //查询分享列表
 const getShareList = () => {
   currentRow.name = ''
+  currentRow.id = 0
   isShare.value = true
   showbtn.value = false
   isBrowser.value = false
   isHomePage.value = false
-  navShow.value = true
+  navShow.value = false
 }
 const currentInstance = getCurrentInstance()
 let {
@@ -565,131 +734,147 @@ let {
 } = useFileSelect(currentInstance)
 
 let permission = reactive({
-  upload: true,
-  newFolder: true,
-  preview: true,
-  open: true,
-  download: true,
-  rename: true,
-  delete: true,
-  allot: true,
-  link: true,
+  upload: false,
+  newFolder: false,
+  preview: false,
+  open: false,
+  download: false,
+  rename: false,
+  delete: false,
+  allot: false,
+  link: false,
   move: false,
   copy: false
 })
-const { isAdmin, isManage } = storeToRefs(globalStore)
-watchEffect(() => {
-  console.log(selectRows.value, 'selectRows')
 
-  if (selectRows.value.some(item => item.auth === 'ONE')) {
-    permission.upload = false
-    permission.newFolder = false
-    permission.download = false
-    permission.rename = false
-    permission.delete = false
-    permission.copy = false
-    permission.move = false
-    permission.allot = false
-    permission.link = false
-    return
-  }
-  if (selectRows.value.some(item => item.auth === 'TWO')) {
-    permission.upload = false
-    permission.newFolder = false
-    permission.download = true
-    permission.rename = false
-    permission.delete = false
-    permission.copy = false
-    permission.move = false
-    permission.allot = false
-    permission.link = false
-    return
-  }
-  if (selectRows.value.some(item => item.auth === 'THREE')) {
-    permission.upload = true
-    permission.newFolder = true
-    permission.download = true
-    permission.rename = true
-    permission.delete = false
-    permission.copy = false
-    permission.move = false
-    permission.allot = false
-    permission.link = false
-    return
-  }
-  if (selectRows.value.some(item => item.auth === 'FOUR')) {
-    permission.upload = true
-    permission.newFolder = true
-    permission.download = true
-    permission.rename = true
-    permission.delete = false
-    permission.copy = true
-    permission.move = true
-    permission.allot = false
-    permission.link = false
-    return
-  }
-  //超管或者对文件有五级权限的人可以对文件任意操作
-  if (isAdmin.value || selectRows.value.every(item => item.auth === 'FIVE' || item.auth === '' || item.auth === null)) {
+const { isAdmin, isManage } = storeToRefs(globalStore)
+const handleBtnAuth = () => {
+  nextTick(() => {
+    let isTopRoot = false
+    const folderList = tableData.value.filter(item => item.type === 'FOLDER')
+    if (folderList.length > 0) {
+      isTopRoot = folderList.every(item => item.parentId === 0)
+    }
+
+    //只有超管在顶级目录有编辑权限
+    //顶级目录=>最高管理员=>所有权限；普通用户无权限
+    // 其他目录=>普通用户=>默认权限=>选中行权限
+
+    if (isTopRoot) {
+      //超管有所有权限
+      if (isAdmin.value) {
+        Object.assign(permission, {
+          upload: true,
+          newFolder: true,
+          preview: true,
+          open: true,
+          download: true,
+          rename: true,
+          delete: true,
+          allot: true,
+          link: true,
+          move: false,
+          copy: false
+        })
+
+        //如果有选中行
+        if (selectRows.value && selectRows.value.length) {
+          handleCurrentRowAuth()
+          handleSelectAuth()
+        } else {
+          //关闭右键菜单
+          currentInstance.proxy.$refs.contextmenuRef.hide()
+          handleCurrentRowAuth()
+        }
+      } else {
+        //普通用户默认没有权限
+        Object.assign(permission, {
+          upload: false,
+          newFolder: false,
+          preview: false,
+          open: false,
+          download: false,
+          rename: false,
+          delete: false,
+          allot: false,
+          link: false,
+          move: false,
+          copy: false
+        })
+      }
+    } else {
+      //先重置权限
+      Object.assign(permission, {
+        upload: false,
+        newFolder: false,
+        preview: false,
+        open: false,
+        download: false,
+        rename: false,
+        delete: false,
+        allot: false,
+        link: false,
+        move: false,
+        copy: false
+      })
+      //如果有选中行
+      if (selectRows.value && selectRows.value.length) {
+        handleCurrentRowAuth()
+        handleSelectAuth()
+      } else {
+        //关闭右键菜单
+        currentInstance.proxy.$refs.contextmenuRef.hide()
+        handleCurrentRowAuth()
+      }
+    }
+
+    console.log(permission, 'watchEffect')
+  })
+}
+const handleCurrentRowAuth = () => {
+  if (currentRow.status === 'COMMON') {
     permission.upload = true
     permission.newFolder = true
     permission.download = true
     permission.rename = true
     permission.delete = true
-    permission.copy = true
-    permission.move = true
-    permission.allot = true
-    permission.link = true
-  }
-})
-const currentRow = reactive({
-  name: '全部文件',
-  id: 0,
-  auth: null
-})
-let curtType = ref(null)
-let uploadAcceptType = ref('')
-watch(
-  () => curtType.value,
-  type => {
-    if (type === 'PICTURE') {
-      uploadAcceptType.value = 'image/*'
-    } else if (type === 'DOCUMENT') {
-      uploadAcceptType.value =
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    } else if (type === 'VIDEO') {
-      uploadAcceptType.value = 'video/*'
-    } else {
-      uploadAcceptType.value = undefined
-    }
-  }
-)
-const filterLevel = key => {
-  const levelLabel = {
-    ONE: '无权限-不可见',
-    TWO: '可查看、下载',
-    THREE: '可查看、下载、上传、创建文件夹',
-    FOUR: '可查看、下载、上传、创建、复制、移动、重命名文件夹/文件',
-    FIVE: '最高权限-任意操作'
-  }
-  return levelLabel[key]
-}
-watch(
-  () => currentRow.auth,
-  val => {
-    switch (val) {
+  } else {
+    switch (currentRow.auth) {
+      case 'READ_ONLY':
+        permission.upload = false
+        permission.newFolder = false
+        permission.download = false
+        permission.rename = false
+        permission.delete = false
+        permission.copy = false
+        permission.move = false
+        permission.allot = false
+        permission.link = false
+        permission.open = false
+        break
+      case 'READ_ONLY_FOLDER':
+        permission.upload = false
+        permission.newFolder = false
+        permission.download = false
+        permission.rename = false
+        permission.delete = false
+        permission.copy = false
+        permission.move = false
+        permission.allot = false
+        permission.link = false
+        permission.open = false
+        break
       case 'ONE':
         permission.upload = false
         permission.newFolder = false
         permission.download = false
         permission.rename = false
         permission.delete = false
-
         break
       case 'TWO':
-        permission.upload = false
-        permission.newFolder = false
-        permission.download = true
+        permission.upload = true
+        permission.newFolder = true
+        permission.download = false
         permission.rename = false
         permission.delete = false
         break
@@ -697,7 +882,7 @@ watch(
         permission.upload = true
         permission.newFolder = true
         permission.download = true
-        permission.rename = true
+        permission.rename = false
         permission.delete = false
         break
       case 'FOUR':
@@ -717,16 +902,243 @@ watch(
         break
     }
   }
+}
+const handleSelectAuth = () => {
+  if (selectRows.value && selectRows.value.length) {
+    const folder = selectRows.value.filter(item => item.type === 'FOLDER')
+    const fileList = selectRows.value.filter(item => item.type !== 'FOLDER')
+    if (folder.length > 0) {
+      permission.allot = true
+      permission.link = false
+      //公开文件任何人可以对文件任意操作
+      if (folder.every(item => item.status === 'COMMON')) {
+        permission.upload = true
+        permission.newFolder = true
+        permission.download = true
+        permission.rename = true
+        permission.delete = true
+        permission.copy = true
+        permission.move = true
+        permission.allot = true
+        permission.open = true
+        return
+      }
+      //只读
+      if (folder.some(item => item.auth === 'READ_ONLY' || item.auth === 'READ_ONLY_FOLDER')) {
+        permission.upload = false
+        permission.newFolder = false
+        permission.download = false
+        permission.rename = false
+        permission.delete = false
+        permission.copy = false
+        permission.move = false
+        permission.allot = false
+        permission.open = false
+        return
+      }
+      //不可见
+      if (folder.some(item => item.auth === 'ONE')) {
+        permission.upload = false
+        permission.newFolder = false
+        permission.download = false
+        permission.rename = false
+        permission.delete = false
+        permission.copy = false
+        permission.move = false
+        permission.allot = false
+
+        permission.open = false
+        return
+      }
+      if (folder.some(item => item.auth === 'TWO')) {
+        permission.upload = true
+        permission.newFolder = true
+        permission.download = false
+        permission.rename = false
+        permission.delete = false
+        permission.copy = false
+        permission.move = false
+        permission.allot = false
+        permission.open = false
+        return
+      }
+      if (folder.some(item => item.auth === 'THREE')) {
+        permission.upload = true
+        permission.newFolder = true
+        permission.download = true
+        permission.rename = false
+        permission.delete = false
+        permission.copy = false
+        permission.move = false
+        permission.allot = false
+        permission.open = false
+        return
+      }
+      if (folder.some(item => item.auth === 'FOUR')) {
+        permission.upload = true
+        permission.newFolder = true
+        permission.download = true
+        permission.rename = true
+        permission.delete = false
+        permission.copy = true
+        permission.move = true
+        permission.allot = false
+        permission.open = false
+        return
+      }
+
+      //超管或者对文件有五级权限的人可以对文件任意操作
+      if (isAdmin.value || folder.every(item => item.auth === 'FIVE' || !item.auth || item.status === 'COMMON')) {
+        permission.upload = true
+        permission.newFolder = true
+        permission.download = true
+        permission.rename = true
+        permission.delete = true
+        permission.copy = true
+        permission.move = true
+        permission.allot = true
+        permission.open = true
+      }
+    } else if (fileList.length > 1) {
+      permission.link = false
+      permission.allot = false
+    } else if (fileList.length === 1) {
+      permission.link = true
+      permission.allot = false
+    }
+
+    //只对文件分配权限
+    if (selectRows.value.some(item => item.type !== 'FOLDER')) {
+      permission.allot = false
+    }
+  }
+}
+watch(
+  () => selectRows.value,
+  () => {
+    console.log(selectRows.value, 'selectRows')
+
+    handleBtnAuth()
+  },
+  {
+    deep: true
+  }
 )
-const fileTableRef = ref()
 let tableData = ref([])
+watch(
+  () => tableData.value,
+  () => {
+    console.log(tableData.value, 'tableData')
+    handleBtnAuth()
+  },
+  {
+    deep: true
+  }
+)
+watch(
+  () => isAdmin.value,
+  () => {
+    //只有超管在顶级目录有编辑权限
+    nextTick(() => {
+      if (isAdmin.value) {
+        Object.assign(permission, {
+          upload: true,
+          newFolder: true,
+          preview: true,
+          open: true,
+          download: true,
+          rename: true,
+          delete: true,
+          allot: true,
+          link: true,
+          move: false,
+          copy: false
+        })
+      } else {
+        Object.assign(permission, {
+          upload: false,
+          newFolder: false,
+          preview: false,
+          open: false,
+          download: false,
+          rename: false,
+          delete: false,
+          allot: false,
+          link: false,
+          move: false,
+          copy: false
+        })
+      }
+    })
+  }
+)
+//最高管理员，可以修改根目录下的文件
+
+const currentRow = reactive({
+  name: '全部文件',
+  id: 0,
+  auth: null
+})
+watch(
+  () => currentRow.auth,
+  () => {
+    handleBtnAuth()
+  }
+)
+
+let curtType = ref(null)
+let uploadAcceptType = ref('')
+watch(
+  () => curtType.value,
+  type => {
+    if (type === 'PICTURE') {
+      uploadAcceptType.value = 'image/*'
+    } else if (type === 'DOCUMENT') {
+      uploadAcceptType.value =
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    } else if (type === 'VIDEO') {
+      uploadAcceptType.value = 'video/*'
+    } else {
+      uploadAcceptType.value = undefined
+    }
+  }
+)
+const filterLevel = key => {
+  const levelLabel = {
+    ONE: '不可见',
+    TWO: '查看、上传、创建',
+    THREE: '查看、上传、创建、下载',
+    FOUR: '查看、上传、创建、下载、复制、移动、重命名',
+    FIVE: '最高权限',
+    READ_ONLY: '查看',
+    READ_ONLY_FOLDER: '查看'
+  }
+  return levelLabel[key]
+}
+
+const fileTableRef = ref()
+
 let navShow = ref(false)
-let breadcrumbData = ref([])
+let breadcrumbData = ref([
+  {
+    id: 0,
+    name: '全部文件'
+  }
+])
 let skeletonLoading = ref(false)
 
 //获取文件和文件夹
 const getCurtFile = params => {
-  const foldId = currentRow.id || 0
+  let foldId = currentRow.id || 0
+  if (params.deleted) {
+    foldId = null
+  }
+  // 获取公共文件夹顶层文件
+  if (isPublicFolder.value && !foldId) {
+    showbtn.value = false
+    getPublicList()
+    return
+  }
   skeletonLoading.value = true
   let p1 = getFolderList({ parentId: foldId, ...params })
   let p2 = getFileList({ fileCategoryId: foldId, ...params })
@@ -736,37 +1148,39 @@ const getCurtFile = params => {
       skeletonLoading.value = false
       //文件夹
       const arr1 = res[0].map(item => {
-        const { id, name, parentId, parent } = item
+        const { id, name, parentId, parent, status, createdByName, lastUpdatedTime, createdTime } = item
         return {
           id,
           name,
           parentId,
+          status,
           parent,
-          time: item.lastUpdatedTime,
+          time: lastUpdatedTime,
+          createdByName,
+          lastUpdatedTime,
+          createdTime,
           type: 'FOLDER',
           auth: item.userFileAuthVo?.type
         }
       })
 
       // 赋值导航面包屑
-      const foldArr = res[0]
-      if (foldArr.length) {
-        breadcrumbData.value = []
-        getChildBread(foldArr[0].parent)
-        breadcrumbData.value.unshift({
-          id: 0,
-          name: '全部文件'
-        })
-      } else {
-        const hasCurrent = breadcrumbData.value.some(item => item.id === currentRow.id)
-        if (!hasCurrent) {
+
+      if (currentRow.id !== 0) {
+        const currentIndex = breadcrumbData.value.findIndex(item => item.id === currentRow.id)
+        if (currentIndex > -1) {
+          //删除当前点击之后的
+          breadcrumbData.value.splice(currentIndex + 1)
+        } else {
           breadcrumbData.value.push({
             id: currentRow.id,
             name: currentRow.name
           })
         }
+      } else {
+        //全部文件只保留一项
+        breadcrumbData.value.splice(1)
       }
-
       //文件
       const arr2 = res[1].map(item => {
         return {
@@ -774,9 +1188,13 @@ const getCurtFile = params => {
           fileId: item.fileVo.id,
           name: item.originName || item.fileVo.originName,
           time: item.fileVo.lastUpdatedTime,
+          createdByName: item.createdByName,
+          lastUpdatedTime: item.lastUpdatedTime,
+          createdTime: item.createdTime,
           md5: item.fileVo.md5,
           parentId: item.categoryVo.parentId,
           type: item.fileVo.type,
+          status: item.status,
           size: item.fileVo.size,
           auth: item.userFileAuthVo?.type,
           fileUrl: null,
@@ -785,14 +1203,10 @@ const getCurtFile = params => {
           watermark: item.watermark
         }
       })
-      // arr2.forEach(item => {
-      //   if (item.type === 'PICTURE') {
-      //     handleFileUrl(item)
-      //   }
-      // })
 
       tableData.value = arr1.concat(arr2)
-      console.log(tableData.value, 'tableData')
+
+      filterShowTable()
     })
     .catch(() => {
       skeletonLoading.value = false
@@ -814,7 +1228,10 @@ const getChildBread = obj => {
 const backLast = () => {
   if (breadcrumbData.value.length > 1) {
     Object.assign(currentRow, breadcrumbData.value[breadcrumbData.value.length - 2])
+
     getCurtFile({ deleted: isRecycleStation.value })
+  } else {
+    ElMessage.success('当前已经是顶级目录！')
   }
 }
 
@@ -835,42 +1252,43 @@ const preview = reactive({
 
 //表格单击-文件预览
 const tableClickRow = async row => {
-  toggleRowSelection(row, true)
+  // toggleRowSelection(row, true)
   console.log(row)
   if (row.type !== 'FOLDER') {
     addBrowserHistory(row.id)
-      .then(res => console.log(res))
-      .catch(() => {})
+    if (row.size > 1024 * 1024 * 10) {
+      ElMessage.warning('文件大于10M，暂不支持在线预览！')
+      return
+    }
   }
+
   if (row.type === 'PICTURE') {
-    console.log(selectRows.value)
-    const imgList = [await handleFileUrl(row)]
-    // const imgList = selectRows.value.filter(item => item.type === 'PICTURE').map(item => item.fileUrl)
-    const index = imgList.findIndex(item => item === row.fileUrl)
-    console.log(imgList, index)
-    console.log(index)
-    v3ImgPreviewFn({
-      images: imgList,
-      index: index
+    const imgIoading = ElLoading.service({
+      text: '图片加载中...',
+      background: 'rgba(0, 0, 0, .3)'
     })
+    try {
+      const imgList = [await handleFileUrl(row)]
+      const index = imgList.findIndex(item => item === row.fileUrl)
+      v3ImgPreviewFn({
+        images: imgList,
+        index: index
+      })
+      imgIoading.close()
+    } catch (error) {
+      console.log(error)
+      imgIoading.close()
+    }
   } else if (row.type === 'VIDEO') {
-    // if (row.size >= window.appsetings.bigFileSize) {
-    //   ElMessage.warning({
-    //     title: '提示',
-    //     message: '暂不支持大视频文件预览功能',
-    //     duration: 5000,
-    //     showClose: true,
-    //     grouping: true
-    //   })
-    //   return
-    // }
-    dialogTextTitle.value = row.name
-    dialogTextVisible.value = true
-    preview.type = 'video'
-    preview.videoId = row.id
-    preview.videoName = row.name
-    preview.shardingList = row.shardingList
-    console.log('preview', preview, row)
+    if (row.shardingList) {
+      dialogTextTitle.value = row.name
+      dialogTextVisible.value = true
+      preview.type = 'video'
+      preview.videoId = row.id
+      preview.videoName = row.name
+      preview.shardingList = row.shardingList
+      console.log('preview', preview, row)
+    } else ElMessage.warning('暂不支持在线预览！')
   } else if (row.type === 'DOCUMENT') {
     switch (filterFileType(row.name)) {
       case 'pdf':
@@ -913,10 +1331,14 @@ const tableClickRow = async row => {
 const tableDbClickRow = row => {
   if (row.type === 'FOLDER' || !row.type) {
     if (isRecycleStation.value) {
-      ElMessage.warning('当前文件夹已删除')
+      // ElMessage.warning('回收站模式下，无法预览！')
       return
     }
+
     Object.assign(currentRow, row)
+
+    //公开文件顶级目标隐藏按钮
+    if (currentRow.id && isPublicFolder.value) showbtn.value = true
     getCurtFile({ deleted: isRecycleStation.value })
   }
 }
@@ -930,21 +1352,26 @@ const tableLeaveRow = row => {
 //表格右键
 const showFileMenu = (row, column, event) => {
   console.log(row, column, event)
-  toggleRowSelection(row, true)
-  if (isRecycleStation.value) {
-    return
+
+  if ((row.auth !== 'READ_ONLY' && row.auth !== 'ONE' && row.auth !== 'READ_ONLY_FOLDER') || row.status == 'COMMON') {
+    toggleRowSelection(row, true)
+    if (isRecycleStation.value) {
+      return
+    }
+    let contextmenuRef = currentInstance.proxy.$refs.contextmenuRef
+    event.preventDefault()
+    event.stopPropagation()
+    contextmenuRef.show({
+      top: event.clientY,
+      left: event.clientX
+    })
+    window.onclick = () => {
+      contextmenuRef.hide()
+    }
+    contextmenuRef.$el.hidden = false
+  } else {
+    ElMessage.warning('您没有权限操作！')
   }
-  let contextmenuRef = currentInstance.proxy.$refs.contextmenu
-  event.preventDefault()
-  event.stopPropagation()
-  contextmenuRef.show({
-    top: event.clientY,
-    left: event.clientX
-  })
-  window.onclick = () => {
-    contextmenuRef.hide()
-  }
-  contextmenuRef.$el.hidden = false
 }
 /**
  * -------文件/文件夹相关操作----------
@@ -954,36 +1381,52 @@ const dialogUploadRef = ref()
 const handleUpload = () => {
   dialogUploadRef.value.initDialog(currentRow.id)
 }
-//创建文件夹
-const handleNewFolder = () => {
-  ElMessageBox.prompt(`在 <b>${currentRow.name}</b> 下创建文件夹，请输入要创建的文件夹名称`, '新建文件夹', {
-    dangerouslyUseHTMLString: true,
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    draggable: true,
-    inputValidator(val) {
-      if (!val) {
-        return '文件夹名称不能为空'
+
+const newFolderForm = reactive({
+  name: '',
+  authType: 'DEFAULT'
+})
+const rules = reactive({
+  name: [
+    { required: true, message: '请输入文件夹名称', trigger: 'blur' },
+    { min: 1, max: 20, message: '文件夹名称长度在 1 到20' }
+  ],
+  authType: [{ required: true, message: '请选择文件夹权限', trigger: 'change' }]
+})
+let dialogVisible = ref(false)
+const newFolderRef = ref()
+const closeDialog = () => {
+  if (newFolderRef.value) newFolderRef.value.resetFields()
+  newFolderForm.name = ''
+  newFolderForm.authType = 'DEFAULT'
+
+  dialogVisible.value = false
+}
+const handleCreateFolder = () => {
+  newFolderRef.value.validate(async valid => {
+    if (valid) {
+      let param = {
+        parentId: currentRow.id,
+        name: newFolderForm.name,
+        authType: newFolderForm.authType
+      }
+      const res = await addFolder(param)
+      if (currentRow.status === 'COMMON') {
+        //公开当前文件
+
+        batchSetFolder(res.id, res.id)
       }
 
-      if (val.includes('/')) {
-        return '文件夹名称不能包含 /'
-      }
-      return true
+      ElMessage.success('创建成功')
+      closeDialog()
+      getCurtFile({ deleted: false })
     }
-  }).then(({ value }) => {
-    let param = {
-      parentId: currentRow.id,
-      name: value
-    }
-    addFolder(param)
-      .then(() => {
-        ElMessage.success('创建成功')
-      })
-      .finally(() => {
-        getCurtFile({ deleted: false })
-      })
   })
+}
+
+//创建文件夹
+const handleNewFolder = () => {
+  dialogVisible.value = true
 }
 // 重命名文件/文件夹
 const handleRename = () => {
@@ -1010,13 +1453,13 @@ const handleRename = () => {
         id: row.id,
         name: value
       }
-      reqMethod = renameFolder
+      reqMethod = modifyFolder
     } else {
       param = {
         id: row.id,
         originName: value
       }
-      reqMethod = renameFile
+      reqMethod = modifyFile
     }
 
     const renameLoadingInstance = ElLoading.service({
@@ -1094,16 +1537,7 @@ const batchDownloadFile = async () => {
     ElMessage.warning('多选下载不能选择视频文件！')
     return
   }
-  // selectFiles.value.forEach(item => {
-  //   if (item.size < window.appsetings.bigFileSize) {
-  //     downloadFile(item.id).then(res => {
-  //       downloadFromStream(res, item.name)
-  //     })
-  //   } else {
-  //     dialogDownloadRef.value.initDialog()
-  //     dialogDownloadRef.value.downloadFile(item)
-  //   }
-  // })
+
   const fileFolderIds = []
   const bigFileList = []
   const loadingInstance = ElLoading.service({
@@ -1156,15 +1590,54 @@ const batchMove = () => {
 const batchShare = () => {
   dialogShareRef.value.initDialog(selectRows.value)
 }
+//文件详情
+const dialogDetailRef = ref()
+const openDetail = row => {
+  dialogDetailRef.value.initDialog(row)
+}
+
+//批量修改权限
+const batchSetOpen = () => {
+  ElMessageBox.confirm(`确认${selectRow.value.status === 'COMMON' ? '取消公开' : '公开文件'}选中的文件吗？请谨慎操作！`, '提示', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(async () => {
+    if (selectRow.value.status === 'COMMON') {
+      ElMessage.warning('请重新分配该文件的权限')
+      batchAllot()
+    } else {
+      const folderIds = selectFolders.value.map(item => item.id)
+      const res = await getSonFolder({ ids: folderIds.toString() })
+      let fileCategoryIds = res.map(item => item.id)
+      if (folderIds.length > 0) {
+        batchSetFolder(fileCategoryIds.join(','), folderIds.join(',')).then(() => {
+          ElMessage.success('公开选中文件夹成功！')
+          searchFile()
+        })
+      }
+    }
+  })
+}
 // 真实删除文件
-const batchDeleteTrue = () => {
-  ElMessageBox.confirm('确认要删除吗, 是否继续？', '提示', {
+const batchDeleteTrue = row => {
+  ElMessageBox.confirm('该操作将彻底删除, 是否继续？', '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
   }).then(() => {
-    const folderIds = selectFolders.value.map(item => item.id)
-    const fileIds = selectFiles.value.map(item => item.id)
+    let folderIds = []
+    let fileIds = []
+    if (row) {
+      if (row.type === 'FOLDER') {
+        folderIds = [row.id]
+      } else {
+        fileIds = [row.id]
+      }
+    } else {
+      folderIds = selectFolders.value.map(item => item.id)
+      fileIds = selectFiles.value.map(item => item.id)
+    }
     batchDeleteFolderTrue({ fileCategoryIds: folderIds, fileFolderIds: fileIds }).then(res => {
       console.log(res)
       ElMessage.success('删除文件成功！')
@@ -1173,14 +1646,24 @@ const batchDeleteTrue = () => {
   })
 }
 //批量还原
-const batchRecycle = () => {
+const batchRecycle = row => {
   ElMessageBox.confirm('确认要还原吗, 是否继续？', '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
   }).then(() => {
-    const folderIds = selectFolders.value.map(item => item.id)
-    const fileIds = selectFiles.value.map(item => item.id)
+    let folderIds = []
+    let fileIds = []
+    if (row) {
+      if (row.type === 'FOLDER') {
+        folderIds = [row.id]
+      } else {
+        fileIds = [row.id]
+      }
+    } else {
+      folderIds = selectFolders.value.map(item => item.id)
+      fileIds = selectFiles.value.map(item => item.id)
+    }
 
     if (folderIds.length) {
       batchDeleteFolder(folderIds, false).then(() => {
@@ -1193,6 +1676,9 @@ const batchRecycle = () => {
         ElMessage.success('还原文件成功！')
         getCurtFile({ deleted: true })
       })
+    }
+    if (!folderIds.length && !fileIds.length) {
+      ElMessage.warning('请勾选文件！')
     }
   })
 }
@@ -1210,9 +1696,10 @@ let showbtn = ref(false)
 //筛选文件类型
 const handleFilterFile = (type, deleted = false) => {
   currentRow.name = ''
+  isRecycleStation.value = false
   isShare.value = false
   isBrowser.value = false
-  showbtn.value = true
+  showbtn.value = false
   isHomePage.value = false
   currentRow.id = 0
   permission.upload = true
@@ -1233,11 +1720,8 @@ const handleFilterFile = (type, deleted = false) => {
         watermark: item.watermark
       }
     })
-    // tableData.value.forEach(item => {
-    //   if (item.type === 'PICTURE') {
-    //     handleFileUrl(item)
-    //   }
-    // })
+
+    filterShowTable()
   })
 }
 // 返回首页
@@ -1249,10 +1733,69 @@ const homePage = () => {
   isHomePage.value = true
   showbtn.value = false
 }
+let isPublicFolder = ref(false)
+const asidePublic = () => {
+  currentRow.name = '全部文件'
+  currentRow.id = 0
+  //公开文件顶级目标隐藏按钮
+  showbtn.value = false
+  navShow.value = true
+  isPublicFolder.value = true
+  getPublicList()
+}
+const getPublicList = () => {
+  skeletonLoading.value = true
+  getCommomFolder()
+    .then(res => {
+      skeletonLoading.value = false
+      //文件夹
+      tableData.value = res.map(item => {
+        const { id, name, parentId, parent, status, createdByName, lastUpdatedTime, createdTime, path } = item
+        return {
+          id,
+          name,
+          parentId,
+          status,
+          parent,
+          time: lastUpdatedTime,
+          createdByName,
+          lastUpdatedTime,
+          createdTime,
+          type: 'FOLDER',
+          path,
+          auth: item.userFileAuthVo?.type
+        }
+      })
+      filterShowTable()
+
+      // 赋值导航面包屑
+
+      if (currentRow.id !== 0) {
+        const currentIndex = breadcrumbData.value.findIndex(item => item.id === currentRow.id)
+        if (currentIndex > -1) {
+          //删除当前点击之后的
+          breadcrumbData.value.splice(currentIndex + 1)
+        } else {
+          breadcrumbData.value.push({
+            id: currentRow.id,
+            name: currentRow.name
+          })
+        }
+      } else {
+        //全部文件只保留一项
+        breadcrumbData.value.splice(1)
+      }
+    })
+    .catch(() => {
+      skeletonLoading.value = false
+    })
+}
+
 //查询主列表
 const backHome = () => {
   currentRow.name = '全部文件'
   currentRow.id = 0
+  isPublicFolder.value = false
   showbtn.value = true
   navShow.value = true
   curtType.value = null
@@ -1278,59 +1821,101 @@ const backHome = () => {
   getCurtFile({ deleted: false })
 }
 
-/**
- * -------返回首页----------
- */
-
-const toAdminPage = () => {
-  console.log(dialogDownloadRef.value.downloadingFileList.length)
-  if (dialogDownloadRef.value.downloadingFileList.length) {
-    ElMessageBox.confirm('当前正在下载文件，是否退出当前页面?', '警告', {
-      confirmButtonText: '确认',
-      cancelButtonText: '取消',
-      type: 'warning'
-    }).then(() => {
-      router.push({
-        name: 'personalManage'
-      })
-    })
-  } else {
-    router.push({
-      name: 'personalManage'
-    })
-  }
+const dialogFileLogRef = ref()
+const openFileLog = () => {
+  let row = selectRow.value
+  dialogFileLogRef.value.openDialog(row)
 }
-
 /**
  * -------图片预览----------
  */
 const handleFileUrl = async row => {
   const res = await downloadFile(row.id)
   row.fileUrl = window.URL.createObjectURL(new Blob([res]))
-  tableData.value = [...tableData.value]
+
   return row.fileUrl
 }
-// 退出登录
-const logout = () => {
-  ElMessageBox.confirm('您是否确认退出登录?', '温馨提示', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  }).then(async () => {
-    // 2.清除 Token
-    globalStore.setToken('')
-    // 3.重置路由
-    resetRouter()
-    // 4.重定向到登陆页，并携带当前退出页地址和参数
-    const path = `${LOGIN_URL}?redirect=${route.path}&params=${JSON.stringify(route.query ? route.query : route.params)}`
-    router.replace(path)
-    ElMessage.success('退出登录成功！')
+
+const handleBackspace = event => {
+  if (event.key === 'Backspace') {
+    if (document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+      backLast()
+    }
+  }
+}
+
+//表格用到的参数
+const state = reactive({
+  page: 1,
+  limit: 10
+})
+let filterTableData = ref([])
+
+//改变页码
+const handleCurrentChange = e => {
+  state.page = e
+  filterShowTable()
+}
+//改变页数限制
+const handleSizeChange = e => {
+  state.limit = e
+
+  filterShowTable()
+}
+const filterShowTable = () => {
+  filterTableData.value = tableData.value.filter(
+    (item, index) => index < state.page * state.limit && index >= state.limit * (state.page - 1)
+  )
+
+  filterTableData.value.forEach(item => {
+    if (item.type === 'PICTURE' && !item.fileUrl) {
+      handleFileUrl(item)
+      filterTableData.value = [...filterTableData.value]
+    }
   })
 }
+const folderCount = computed(() => {
+  return tableData.value.filter(item => item.type === 'FOLDER').length
+})
+const fileCount = computed(() => {
+  return tableData.value.filter(item => item.type !== 'FOLDER').length
+})
+onMounted(() => {
+  document.addEventListener('keydown', handleBackspace)
+})
+onBeforeUnmount(() => {
+  document.removeEventListener('keydown', handleBackspace)
+})
 </script>
 <style lang="scss" scoped>
 @import './index.scss';
-.userName {
-  margin-right: 12px;
+:deep(.el-breadcrumb__inner) {
+  color: #409eff;
+}
+.dialog_header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-right: 30px;
+  height: 32px;
+}
+.user_name {
+  text-decoration: underline;
+  color: #409eff;
+}
+.text_ellipsis {
+  width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.just-end {
+  justify-content: flex-end;
+}
+.tips {
+  margin-left: 20px;
+  margin-bottom: 20px;
+  font-size: 18px;
 }
 </style>

@@ -1,5 +1,12 @@
 <template>
-  <el-dialog v-model="dialogVisible" title="个人信息" width="500px" draggable>
+  <el-dialog
+    v-model="dialogVisible"
+    title="个人信息"
+    :close-on-click-modal="false"
+    :close-on-press-escape="false"
+    width="500px"
+    draggable
+  >
     <span>This is userInfo</span>
     <template #footer>
       <span class="dialog-footer">

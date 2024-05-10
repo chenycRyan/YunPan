@@ -4,7 +4,7 @@
     <div class="not-detail">
       <h2>404</h2>
       <h4>抱歉，您访问的页面不存在~🤷‍♂️🤷‍♀️</h4>
-      <el-button type="primary" @click="router.push(HOME_URL)">返回首页</el-button>
+      <el-button type="primary" @click="backHome">返回首页</el-button>
     </div>
   </div>
 </template>
@@ -13,6 +13,9 @@
 import { useRouter } from 'vue-router'
 import { HOME_URL } from '@/config/config'
 const router = useRouter()
+const backHome = () => {
+  window.location.href = window.location.href.split('#')[0] + 'login'
+}
 </script>
 
 <style scoped lang="scss">

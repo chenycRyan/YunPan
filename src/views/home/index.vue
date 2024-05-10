@@ -11,31 +11,36 @@
     <div class="quick_navaigation">
       <div class="navaigation_item" @click="gotoMyShare('my_file')">
         <div class="center_box">
-          <el-icon color="#007BD3" :size="52"><Files /></el-icon>
+          <!-- <el-icon color="#007BD3" :size="52"><Files /></el-icon> -->
+          <img src="@/assets/images/home/file.png" alt="" />
           <div>我的文件</div>
         </div>
       </div>
       <div class="navaigation_item" @click="gotoMyShare('my_share')">
         <div class="center_box">
-          <el-icon color="#FFC069" :size="52"><Share /></el-icon>
+          <!-- <el-icon color="#FFC069" :size="52"><Share /></el-icon> -->
+          <img src="@/assets/images/home/share.png" alt="" />
           <div>我的分享</div>
         </div>
       </div>
       <div class="navaigation_item" @click="gotoMyShare('my_browser')">
         <div class="center_box">
-          <el-icon color="#64D9D6" :size="52"><View /></el-icon>
+          <!-- <el-icon color="#64D9D6" :size="52"><View /></el-icon> -->
+          <img src="@/assets/images/home/browse.png" alt="" />
           <div>我的浏览</div>
         </div>
       </div>
       <div class="navaigation_item" @click="gotoMyShare('my_star')">
         <div class="center_box">
-          <el-icon color="#95E0FE" :size="52"><StarFilled /></el-icon>
+          <!-- <el-icon color="#95E0FE" :size="52"><StarFilled /></el-icon> -->
+          <img src="@/assets/images/home/collect.png" alt="" />
           <div>我的收藏</div>
         </div>
       </div>
       <div class="navaigation_item" @click="gotoMyShare('my_trashed')">
         <div class="center_box">
-          <el-icon color="#95DE64" :size="52"><Delete /></el-icon>
+          <!-- <el-icon color="#95DE64" :size="52"><Delete /></el-icon> -->
+          <img src="@/assets/images/home/recycle.png" alt="" />
           <div>回收站</div>
         </div>
       </div>

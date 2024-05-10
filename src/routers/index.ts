@@ -38,7 +38,6 @@ router.beforeEach(async (to, from, next) => {
 
   // 1.NProgress 开始
   NProgress.start()
-
   // 2.如果是访问登陆页，没有 token 直接放行，有 token 就在当前页
   if (to.path === LOGIN_URL) {
     if (!globalStore.token) return next()

@@ -3,9 +3,6 @@
     <el-header>
       <div class="header-box">
         <div class="item"><img src="@/assets/images/header/logo.png" alt="" /> 汇博机器人云盘管理</div>
-        <!-- <div class="item cursor" @click="toAdminPage">
-          <el-icon class="icon" size="18"><HomeFilled /></el-icon> <span>返回后台</span>
-        </div> -->
       </div>
     </el-header>
 
@@ -14,10 +11,15 @@
         <el-main>
           <!-- 按钮组 -->
           <div class="btn-group">
-            <el-button type="primary" plain @click="batchDownloadFile" v-show="selectFolders.length === 0">
+            <el-button
+              type="primary"
+              plain
+              @click="batchDownloadFile"
+              v-show="selectFolders.length === 0 && selectFiles.length > 0"
+            >
               <el-icon><Download /></el-icon>下载
             </el-button>
-            <el-divider direction="vertical" />
+            <el-divider direction="vertical" v-show="selectFolders.length === 0 && selectFiles.length > 0" />
             <el-button type="primary" plain @click="dialogDownloadRef.initDialog()">
               <el-icon><Sort /></el-icon>
               下载列表
@@ -62,7 +64,7 @@
                 <div v-show="!skeletonLoading" class="row-name flex-align" @click="tableClickRow(scope.row)">
                   <img :src="scope.row.fileUrl" class="svg-icon" v-if="scope.row.type === 'PICTURE'" alt="" />
                   <svg-icon name="MP4" v-else-if="scope.row.type === 'VIDEO'" class="svg-icon"></svg-icon>
-                  <svg-icon name="Folder" v-else-if="scope.row.type === 'FOLDER'" class="svg-icon"></svg-icon>
+                  <svg-icon name="FOLDER" v-else-if="scope.row.type === 'FOLDER'" class="svg-icon"></svg-icon>
                   <svg-icon :name="displayFileType(scope.row.name)" v-else class="svg-icon"></svg-icon>
                   <span>{{ scope.row.name }}</span>
                 </div>
@@ -124,6 +126,8 @@
       class="dialog-preview"
       :title="dialogTextTitle"
       :destroy-on-close="true"
+      :close-on-click-modal="false"
+      :close-on-press-escape="false"
       top="4vh"
       width="50vw"
     >
@@ -182,7 +186,7 @@ const checkShare = () => {
       },
       inputErrorMessage: '提取码不能为空.'
     }).then(({ value }) => {
-      checkFileValid(route.query.id, { verCode: value })
+      checkFileValid(route.query.id, { verCode: value.trim() })
         .then(() => {
           verCode.value = value
           const shareInfo = {
@@ -285,7 +289,12 @@ const currentRow = reactive({
   id: 0
 })
 
-let breadcrumbData = ref([])
+let breadcrumbData = ref([
+  {
+    id: 0,
+    name: '全部文件'
+  }
+])
 let skeletonLoading = ref(false)
 
 //获取文件和文件夹
@@ -313,22 +322,20 @@ const getCurtFile = () => {
       })
 
       // 赋值导航面包屑
-      const foldArr = res[0]
-      if (foldArr.length) {
-        breadcrumbData.value = []
-        getChildBread(foldArr[0].parent)
-        breadcrumbData.value.unshift({
-          id: 0,
-          name: '全部文件'
-        })
-      } else {
-        const hasCurrent = breadcrumbData.value.some(item => item.id === currentRow.id)
-        if (!hasCurrent) {
+      if (currentRow.id !== 0) {
+        const currentIndex = breadcrumbData.value.findIndex(item => item.id === currentRow.id)
+        if (currentIndex > -1) {
+          //删除当前点击之后的
+          breadcrumbData.value.splice(currentIndex + 1)
+        } else {
           breadcrumbData.value.push({
             id: currentRow.id,
             name: currentRow.name
           })
         }
+      } else {
+        //全部文件只保留一项
+        breadcrumbData.value.splice(1)
       }
 
       //文件
@@ -455,42 +462,8 @@ const tableDbClickRow = row => {
   }
 }
 
-/**
- * -------返回首页----------
- */
-const router = useRouter()
-const toAdminPage = () => {
-  router.push({
-    name: 'home'
-  })
-}
 //批量下载
-// const batchDownloadFile = () => {
-//   let num = 0
-//   selectFiles.value.forEach(item => {
-//     let lastName = item.name.substr(item.name.lastIndexOf('.') + 1).toLowerCase()
-//     if (lastName === 'mp4') {
-//       num++
-//     }
-//   })
-//   if (num > 0 && selectFiles.value.length > 1) {
-//     ElMessage.warning('视频文件请单独下载')
-//     return
-//   }
-//   selectFiles.value.forEach(async item => {
-//     let lastName = item.name.substr(item.name.lastIndexOf('.') + 1).toLowerCase()
-//     console.log(item)
-//     //TODO: 分享的大视频文件下载
-//     if (lastName === 'mp4' && item.fileSize > window.appsetings.bigFileSize) {
-//       const res = await downloadFile(item.id)
-//       downloadFromStream(res, item.name)
-//     } else {
-//       shareDownloadFile(route.query.id, { fileFolderId: item.id, verCode: verCode.value }).then(res => {
-//         downloadFromStream(res, item.name)
-//       })
-//     }
-//   })
-// }
+
 const batchDownloadFile = async () => {
   let flag = selectFiles.value.length > 1 && selectFiles.value.some(file => file.type === 'VIDEO')
   if (flag) {

@@ -4,8 +4,8 @@
     <el-aside>
       <div class="menu" :style="{ width: isCollapse ? '65px' : '210px' }">
         <div class="logo flx-center">
-          <img src="@/assets/images/logo.png" alt="logo" />
-          <span v-show="!isCollapse">汇博机器人资源库</span>
+          <img src="@/assets/images/header/logo.png" alt="logo" />
+          <span v-show="!isCollapse">汇博云盘管理</span>
         </div>
         <el-scrollbar>
           <el-menu
@@ -47,7 +47,11 @@ const route = useRoute()
 const authStore = AuthStore()
 const globalStore = GlobalStore()
 const activeMenu = computed(() => (route.meta.activeMenu ? route.meta.activeMenu : route.path))
-const menuList = computed(() => authStore.showMenuListGet)
+// const menuList = computed(() => authStore.showMenuListGet)\
+const { isAdmin, isManage } = storeToRefs(globalStore)
+const isAdminOrMana = isAdmin.value || isManage.value
+const menuList = authStore.getAdminMenuList(isAdminOrMana)
+console.log('menuList', menuList)
 const isCollapse = computed(() => globalStore.themeConfig.isCollapse)
 </script>
 

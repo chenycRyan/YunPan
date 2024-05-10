@@ -12,6 +12,18 @@
           <el-option v-for="(value, key) in opreationType" :key="key" :label="value" :value="key" />
         </el-select>
       </el-form-item>
+      <el-form-item label="日志类型:">
+        <el-select
+          v-model="queryParams.level"
+          placeholder="请选择日志类型"
+          @change="pageInit()"
+          style="margin-bottom: 12px; margin-right: 12px"
+        >
+          <el-option label="全部" value="" />
+          <el-option label="记录" value="INFO" />
+          <el-option label="异常" value="ERROR" />
+        </el-select>
+      </el-form-item>
     </el-form>
     <el-table stripe :data="tableData" style="width: 100%">
       <el-table-column prop="createdTime" width="180" align="center">
@@ -27,7 +39,7 @@
           </div>
         </template>
       </el-table-column>
-      <el-table-column width="220" align="center">
+      <el-table-column width="180" align="center">
         <template #header>
           <el-icon><Operation /></el-icon>
           <span>操作类型</span>
@@ -38,6 +50,7 @@
           </div>
         </template>
       </el-table-column>
+
       <el-table-column>
         <template #header>
           <el-icon>
@@ -51,16 +64,6 @@
           </div>
         </template>
       </el-table-column>
-      <!-- <el-table-column label="操作" width="160">
-        <template #default="scope">
-          <el-button
-            size="small"
-            type="danger"
-            @click="handleDelete(scope.row)"
-            >删除</el-button
-          >
-        </template>
-      </el-table-column> -->
     </el-table>
     <div class="page-container">
       <el-pagination
@@ -79,7 +82,7 @@
 <script setup>
 import { ref } from 'vue'
 import { dateToString } from '@/utils/dateTool'
-import { getfileLogPage, getfileLogList } from '@/api/modules/file'
+import { getfileLogPage } from '@/api/modules/file'
 import { GlobalStore } from '@/stores'
 const globalStore = GlobalStore()
 onMounted(() => {

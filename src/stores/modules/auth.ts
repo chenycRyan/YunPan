@@ -3,7 +3,6 @@ import { AuthState } from '@/stores/interface'
 import menuList from '@/assets/json/dynamicRouter.json'
 import { getKeepAliveRouterName, getShowMenuList, getAllBreadcrumbList } from '@/utils'
 import piniaPersistConfig from '@/config/piniaPersist'
-
 // AuthStore
 export const AuthStore = defineStore({
   id: 'AuthState',
@@ -33,6 +32,16 @@ export const AuthStore = defineStore({
     // setRouteName
     async setRouteName(name: string) {
       this.routeName = name
+    },
+    getAdminMenuList(isAdmin: Boolean) {
+      if (isAdmin) {
+        this.authMenuList.forEach(ele => {
+          if (ele.name === 'serviceMonitoring') {
+            ele.meta.isHide = false
+          }
+        })
+      }
+      return getShowMenuList(this.authMenuList)
     }
   },
   persist: piniaPersistConfig('AuthState', ['authButtonList', 'routeName'])

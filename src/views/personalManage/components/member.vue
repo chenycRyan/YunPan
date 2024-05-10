@@ -1,10 +1,21 @@
 <template>
-  <el-dialog v-model="dialogVisible" @close="closeDialog" :title="dialogTitle" width="40%">
+  <el-dialog
+    v-model="dialogVisible"
+    @close="closeDialog"
+    :close-on-click-modal="false"
+    :close-on-press-escape="false"
+    :title="dialogTitle"
+    width="50%"
+  >
     <div class="row-line">
       <div class="row-left">
         <div class="search">
           <span> 用户名称: </span>
           <el-input v-model="queryForm.realName" @input="getPerson" placeholder="请输入"></el-input>
+          <span style="margin-left: 12px"> 所属部门: </span>
+          <el-select v-model="queryForm.depIds" multiple placeholder="请选择" style="width: 100%" @change="getPerson">
+            <el-option v-for="item in departmentList" :key="item.id" :label="item.name" :value="item.id" />
+          </el-select>
         </div>
         <el-checkbox-group v-model="checkList" class="check_box">
           <el-checkbox v-for="item in tableData" :key="item.id" :label="{ id: item.id, label: item.label }">{{
@@ -31,8 +42,12 @@ import { getUserPage } from '@/api/modules/user'
 import { filterParam } from '@/utils/index'
 import { ElMessage } from 'element-plus'
 import { batchUpdateMember } from '@/api/modules/department'
+import { apiFun } from '@/api/apiFun'
+const departmentApi = apiFun('/departments')
 const emits = defineEmits(['searchPerson'])
-onMounted(() => {})
+onMounted(() => {
+  getDepartment()
+})
 
 let dialogVisible = ref(false)
 let dialogTitle = ref('维护成员')
@@ -46,10 +61,21 @@ const initDialog = row => {
   getPerson()
   getDepList()
 }
-
+//编辑用户的部门列表
+let departmentList = ref([])
+const getDepartment = () => {
+  let params = {
+    page: 0,
+    size: 100
+  }
+  departmentApi.findPage(params).then(res => {
+    departmentList.value = res.content
+  })
+}
 let tableTotal = ref(0)
 let tableData = ref([])
 const queryForm = reactive({
+  depIds: [],
   realName: '',
   page: 0,
   size: 10
@@ -69,6 +95,7 @@ const getPerson = () => {
   }
 
   params = filterParam(params)
+  params.depIds = params.depIds + ''
   getUserPage(params).then(res => {
     tableData.value = res.content
     tableData.value.forEach(item => {
@@ -80,7 +107,7 @@ const getPerson = () => {
 let checkList = ref([])
 //获取右侧群组所属人员列表
 const getDepList = () => {
-  getUserPage({ depIds: depId.value, page: 0, size: 1000 }).then(res => {
+  getUserPage({ depIds: depId.value, isDeleted: false, page: 0, size: 1000 }).then(res => {
     checkList.value = res.content.map(item => {
       return {
         id: item.id,
@@ -129,11 +156,13 @@ defineExpose({ initDialog })
   .search {
     display: flex;
     align-items: center;
+    margin-bottom: 6px;
     span {
-      width: 100px;
+      min-width: 65px;
     }
   }
   .row-right {
+    max-width: 40%;
     border-left: 1px solid #eeeeee;
     padding-left: 10px;
     margin-left: 10px;

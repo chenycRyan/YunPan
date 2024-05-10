@@ -10,6 +10,12 @@
       <el-table-column label="分享类型">
         <template #default="scope">{{ timeLimit(scope.row.status) }}</template>
       </el-table-column>
+      <el-table-column label="分享文件">
+        <template #default="scope">
+          <span style="color: #e6a23c" v-for="item in scope.row.fileFolderVo" :key="item.id"> {{ item.originName }}</span>
+        </template>
+      </el-table-column>
+
       <el-table-column property="verCode" label="验证码" />
       <el-table-column property="deadTime" label="失效日期" />
       <el-table-column property="deadTime" label="复制链接">
@@ -101,7 +107,7 @@ function timeLimit(val) {
   return obj[val]
 }
 function getLink(row) {
-  return `${window.location.href.split('#')[0]}#/share?id=${row.id} 提取码: ${row.verCode}`
+  return `${window.location.href.split('#')[0]}#/share?id=${row.id}`
 }
 </script>
 <style lang="scss" scoped>

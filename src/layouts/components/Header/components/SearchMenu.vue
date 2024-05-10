@@ -5,6 +5,8 @@
       @click="closeSearch"
       v-model="isShowSearch"
       width="300px"
+      :close-on-click-modal="false"
+      :close-on-press-escape="false"
       destroy-on-close
       :modal="false"
       :show-close="false"

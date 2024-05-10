@@ -5,25 +5,31 @@
     </div>
     <template #dropdown>
       <el-dropdown-menu>
+        <el-dropdown-item @click="changePassword" divided>
+          <el-icon><SwitchButton /></el-icon>修改密码
+        </el-dropdown-item>
         <el-dropdown-item @click="logout" divided>
-          <el-icon><SwitchButton /></el-icon>登出
+          <el-icon><SwitchButton /></el-icon>退出登录
         </el-dropdown-item>
       </el-dropdown-menu>
     </template>
   </el-dropdown>
+  <ChangePwd ref="changPwdRef"></ChangePwd>
 </template>
 
 <script setup lang="ts">
 import { GlobalStore } from '@/stores'
 import { LOGIN_URL } from '@/config/config'
 import { resetRouter } from '@/routers/index'
-
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessageBox, ElMessage } from 'element-plus'
 const route = useRoute()
 const router = useRouter()
 const globalStore = GlobalStore()
-
+const changPwdRef = ref()
+const changePassword = () => {
+  changPwdRef.value.dialogVisible = true
+}
 // 退出登录
 const logout = () => {
   ElMessageBox.confirm('您是否确认退出登录?', '温馨提示', {

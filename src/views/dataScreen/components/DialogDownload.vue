@@ -1,10 +1,17 @@
 <template>
-  <el-dialog v-model="dialogVisible" :close-on-click-modal="false" :title="dialogTitle" width="600px" :before-close="handleClose">
-    <div v-if="downloadingFileList.length === 0">
+  <el-dialog
+    v-model="dialogVisible"
+    :close-on-click-modal="false"
+    :close-on-press-escape="false"
+    :title="dialogTitle"
+    width="600px"
+    :before-close="handleClose"
+  >
+    <div v-if="downFileList.length === 0">
       <el-empty :image-size="200" />
     </div>
-    <el-divider content-position="left" v-if="downloadingFileList.length > 1">下载列表</el-divider>
-    <div v-for="fileItem in downloadingFileList" :key="fileItem.id">
+    <el-divider content-position="left" v-if="downFileList.length > 1">下载列表</el-divider>
+    <div v-for="fileItem in downFileList" :key="fileItem.id">
       <div class="downloading">
         <div class="file-desc">
           <div class="fileName">{{ fileItem.name }}</div>
@@ -15,24 +22,26 @@
             <span>下载速度：</span>
             {{ fileItem.downloadSpeed }}
           </div>
-          <el-button size="mini" @click="cancelDownload">取消下载 </el-button>
+          <el-button type="primary" @click="changeDownloadStop(fileItem)">
+            <el-icon size="18" v-if="fileItem.downloadingStop"><VideoPlay /></el-icon>
+            <el-icon size="18" v-else><VideoPause /></el-icon>
+            <span style="margin-left: 3px">{{ fileItem.downloadingStop ? '继续下载' : '取消下载' }}</span>
+          </el-button>
         </div>
         <div class="progress">
-          <span>下载进度：</span>
-          <el-progress :text-inside="true" :stroke-width="16" :percentage="fileItem.downloadPersentage"> </el-progress>
-          <el-button circle class="ml-10" link @click="changeDownloadStop(fileItem)">
-            <el-icon size="20" v-if="fileItem.downloadingStop == false"><VideoPause /></el-icon>
-            <el-icon size="20" v-else><VideoPlay /></el-icon>
-            {{ fileItem.loadingTips }}
-          </el-button>
+          <div class="flex-center">
+            <span>下载进度：</span>
+            <el-progress :text-inside="true" :stroke-width="16" :percentage="fileItem.downloadPersentage"> </el-progress>
+          </div>
+          {{ fileItem.loadingTips }}
         </div>
       </div>
     </div>
   </el-dialog>
 </template>
 <script setup>
-import { downloadBigFile, downLoadSmallFile } from '@/api/modules/file'
-// import { fetchFile } from '@ffmpeg/ffmpeg'
+import { downloadBigFile, downLoadFfmpegFile } from '@/api/modules/file'
+import { VideoPause, VideoPlay } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { GlobalStore } from '@/stores'
 import axios from 'axios'
@@ -42,20 +51,17 @@ const ffmpeg = globalStore.ffmpeg
 let isDowning = ref(false)
 let dialogVisible = ref(false)
 const dialogTitle = ref('文件下载')
-let downloadingFileList = ref([])
+let downFileList = ref([])
 const handleClose = () => {
-  // downloadingFileList.value = []
   dialogVisible.value = false
 }
-const cancelDownload = () => {
-  window.location.reload()
-}
+
 watch(
-  () => downloadingFileList.value.length,
-  length => {
-    console.log('downloadingFileList的' + length)
-    let file = downloadingFileList.value[0]
+  () => downFileList.value.length,
+  () => {
+    let file = downFileList.value[0]
     if (!isDowning.value && file) {
+      //根据shardingList判断是否走MP4视频合成
       if (file.shardingList && file.shardingList?.length > 0) {
         getTotalVideo(file)
       } else {
@@ -66,25 +72,15 @@ watch(
     }
   }
 )
-//换算文件的大小单位
-function formatSize(file) {
-  //console.log("size",file.size);
-  let size = file.size
-  let unit
-  let units = [' B', ' K', ' M', ' G']
-  let pointLength = 2
-  while ((unit = units.shift()) && size > 1024) {
-    size = size / 1024
-  }
-  return (unit === 'B' ? size : size.toFixed(pointLength === undefined ? 2 : pointLength)) + unit
-}
+
 //点击暂停下载
 function changeDownloadStop(file) {
   file.downloadingStop = !file.downloadingStop
   if (!file.downloadingStop) {
-    console.log('开始。。')
-
     downloadChunk(1, file)
+    file.loadingTips = '下载中...'
+  } else {
+    file.loadingTips = '暂停下载'
   }
 }
 //点击下载文件
@@ -94,23 +90,11 @@ function downloadFile(file) {
   file.downloadSpeed = '0 M/s'
   file.downloadPersentage = 0
   file.loadingTips = '下载中...'
-  const flag = downloadingFileList.value.findIndex(ele => ele.id === file.id)
-  if (flag > -1) {
+  if (downFileList.value.some(ele => ele.id === file.id)) {
     ElMessage.warning('当前文件已在下载列表中')
     return
   }
-  downloadingFileList.value.push(file)
-  // if(file.shardingList && file.shardingList?.length > 0 ) {
-  //   getTotalVideo(file.shardingList, file)
-  // } else {
-  //   // file.downloadingStop = false
-  //   // file.downloadSpeed = '0 M/s'
-  //   // file.downloadPersentage = 0
-  //   file.blobList = []
-  //   file.chunkList = []
-  //   // downloadingFileList.value.push(file)
-  //   downloadChunk(1, file)
-  // }
+  downFileList.value.push(file)
 }
 //两个数之间的随机整数
 function getRandomInt(min, max) {
@@ -136,19 +120,16 @@ const getTotalVideo = async file => {
   let blobs = []
   let startTime1 = new Date().valueOf()
   if (file.watermark) {
-    let random = Math.floor(Math.random() * (arr.length - 1))
-    random = random ? random : 1
-    let random1 = random - 1 <= 0
     if (arr.length === 1) {
       arr.forEach(ele => {
         blobs.push(
-          downLoadSmallFile({ path: ele, fileFolderId: file.id, waterMarkPath: `${arr[0]}` }, { cancelToken: source.token })
+          downLoadFfmpegFile({ path: ele, fileFolderId: file.id, waterMarkPath: `${arr[0]}` }, { cancelToken: source.token })
         )
       })
     } else {
       arr.forEach(ele => {
         blobs.push(
-          downLoadSmallFile(
+          downLoadFfmpegFile(
             { path: ele, fileFolderId: file.id, waterMarkPath: `${arr[0]},${arr[getRandomInt(1, arr.length - 1)]}` },
             { cancelToken: source.token }
           )
@@ -157,7 +138,7 @@ const getTotalVideo = async file => {
     }
   } else {
     arr.forEach(ele => {
-      blobs.push(downLoadSmallFile({ path: ele, fileFolderId: file.id, waterMarkPath: `` }, { cancelToken: source.token }))
+      blobs.push(downLoadFfmpegFile({ path: ele, fileFolderId: file.id, waterMarkPath: `` }, { cancelToken: source.token }))
     })
   }
   arr = null
@@ -240,18 +221,18 @@ const getTotalVideo = async file => {
       a.download = file.name
       a.href = downLoadUrl
       a.click()
-
-      isDowning.value = false
       console.log('downLoadUrl', downLoadUrl)
+
       //预览1.5s 浏览器处理文件
       let timer = setTimeout(() => {
         file.downloadPersentage = 100
+        isDowning.value = false
         //下载成功后，列表中清除当前的大文件
-        downloadingFileList.value.splice(
-          downloadingFileList.value.findIndex(ele => ele.id === file.id),
+        downFileList.value.splice(
+          downFileList.value.findIndex(ele => ele.id === file.id),
           1
         )
-        if (downloadingFileList.value.length === 0) {
+        if (downFileList.value.length === 0) {
           handleClose()
         }
         clearTimeout(timer)
@@ -268,11 +249,11 @@ const getTotalVideo = async file => {
         showClose: true,
         grouping: true
       })
-      downloadingFileList.value.splice(
-        downloadingFileList.value.findIndex(ele => ele.id === file.id),
+      downFileList.value.splice(
+        downFileList.value.findIndex(ele => ele.id === file.id),
         1
       )
-      if (downloadingFileList.value.length === 0) {
+      if (downFileList.value.length === 0) {
         handleClose()
       }
       file = null
@@ -330,11 +311,28 @@ function downloadChunk(index, file) {
             a.setAttribute('download', fileName)
             document.body.appendChild(a)
             a.click() //点击下载
-            isDowning.value = false
+
             document.body.removeChild(a) // 下载完成移除元素
             window.URL.revokeObjectURL(url) // 释放掉blob对象
-            //调用关闭弹框
-            handleClose()
+
+            //预览1.5s 浏览器处理文件
+            let timer = setTimeout(() => {
+              file.downloadPersentage = 100
+              isDowning.value = false
+              console.log('isDowning', isDowning.value)
+              //下载成功后，列表中清除当前的大文件
+              downFileList.value.splice(
+                downFileList.value.findIndex(ele => ele.id === file.id),
+                1
+              )
+              console.log(downFileList)
+              if (downFileList.value.length === 0) {
+                handleClose()
+              }
+              clearTimeout(timer)
+              timer = null
+              file = null
+            }, 1500)
           }
 
           downloadChunk(index + 1, file)
@@ -346,10 +344,22 @@ function downloadChunk(index, file) {
     }
   }
 }
+//换算文件的大小单位
+function formatSize(file) {
+  let size = file.size
+  let unit
+  let units = [' B', ' K', ' M', ' G']
+  let pointLength = 2
+  while ((unit = units.shift()) && size > 1024) {
+    size = size / 1024
+  }
+  return (unit === 'B' ? size : size.toFixed(pointLength === undefined ? 2 : pointLength)) + unit
+}
 const initDialog = () => {
   dialogVisible.value = true
 }
-defineExpose({ initDialog, downloadFile, downloadingFileList })
+
+defineExpose({ initDialog, downloadFile })
 </script>
 <style lang="scss" scoped>
 :deep(.el-divider--horizontal) {
@@ -365,15 +375,15 @@ defineExpose({ initDialog, downloadFile, downloadingFileList })
   .file-desc {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 16px;
-  }
-  .speed {
-    margin-bottom: 16px;
+    margin-bottom: 30px;
   }
 }
 .progress {
   display: flex;
+  justify-content: space-between;
+  padding-right: 20px;
 }
+
 .progress .el-progress {
   width: 310px;
 }

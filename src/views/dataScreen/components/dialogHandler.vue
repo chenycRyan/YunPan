@@ -1,5 +1,12 @@
 <template>
-  <el-dialog v-model="dialogVisible" :title="dialogTitle" width="30%" :before-close="handleClose">
+  <el-dialog
+    v-model="dialogVisible"
+    :close-on-click-modal="false"
+    :close-on-press-escape="false"
+    :title="dialogTitle"
+    width="30%"
+    :before-close="handleClose"
+  >
     <!-- <div class="flex-center">
       <div class="back" @click="backLast" v-show="breadcrumbData.length > 1">返回上一级</div>
       <el-divider direction="vertical" v-show="breadcrumbData.length > 1" />
@@ -47,7 +54,12 @@ const emits = defineEmits(['search'])
 let dialogVisible = ref(false)
 let dialogTitle = ref('移动')
 let tableData = ref<FileSpace.FoldItf[]>([])
-let breadcrumbData = ref<FileSpace.IdNameItf[]>([])
+let breadcrumbData = ref<FileSpace.IdNameItf[]>([
+  {
+    id: 0,
+    name: '全部文件'
+  }
+])
 let selectRows = ref<FileSpace.RowItf[]>([])
 
 const currentRow = reactive<FileSpace.IdNameItf>({
@@ -99,22 +111,20 @@ const getFolder = () => {
       }
     })
     // 赋值导航面包屑
-    const foldArr = res
-    if (foldArr.length) {
-      breadcrumbData.value = []
-      getChildBread(foldArr[0].parent)
-      breadcrumbData.value.unshift({
-        id: 0,
-        name: '全部文件'
-      })
-    } else {
-      const hasCurrent = breadcrumbData.value.some(item => item.id === currentRow.id)
-      if (!hasCurrent) {
+    if (currentRow.id !== 0) {
+      const currentIndex = breadcrumbData.value.findIndex(item => item.id === currentRow.id)
+      if (currentIndex > -1) {
+        //删除当前点击之后的
+        breadcrumbData.value.splice(currentIndex + 1)
+      } else {
         breadcrumbData.value.push({
           id: currentRow.id,
           name: currentRow.name
         })
       }
+    } else {
+      //全部文件只保留一项
+      breadcrumbData.value.splice(1)
     }
 
     console.log(tableData.value, 'tableData')

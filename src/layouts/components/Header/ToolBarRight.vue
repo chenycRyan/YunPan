@@ -11,22 +11,27 @@
       <div class="username">{{ userInfo.real_name }}</div>
       <template #dropdown>
         <el-dropdown-menu>
+          <el-dropdown-item @click="changePassword" divided>
+            <el-icon><EditPen /></el-icon>修改密码
+          </el-dropdown-item>
           <el-dropdown-item @click="logout" divided>
-            <el-icon><SwitchButton /></el-icon>登出
+            <el-icon><SwitchButton /></el-icon>退出登录
           </el-dropdown-item>
         </el-dropdown-menu>
       </template>
     </el-dropdown>
     <!-- <Avatar /> -->
     <div class="item cursor" @click="toFrontPage">
-      <el-icon class="icon" size="18"> <Menu /></el-icon> <span>去往前台</span>
+      <el-icon class="icon" size="18"> <Menu /></el-icon> <span style="font-size: 16px">去往前台</span>
     </div>
+    <ChangePwd ref="changPwdRef"></ChangePwd>
   </div>
 </template>
 
 <script setup lang="ts">
 // import SearchMenu from './components/SearchMenu.vue'
 import Fullscreen from './components/Fullscreen.vue'
+import ChangePwd from './components/ChangePwd.vue'
 // import Message from './components/Message.vue'
 import ThemeSetting from './components/ThemeSetting.vue'
 // import AssemblySize from './components/AssemblySize.vue'
@@ -44,6 +49,10 @@ const toFrontPage = () => {
   router.push({
     name: 'dataScreen'
   })
+}
+const changPwdRef = ref()
+const changePassword = () => {
+  changPwdRef.value.dialogVisible = true
 }
 // 退出登录
 const logout = () => {
@@ -78,8 +87,11 @@ const logout = () => {
     margin-right: 15px;
   }
   .username {
-    font-size: 15px;
+    font-size: 16px;
+    color: #06a7ff !important;
+    text-decoration: underline;
     cursor: pointer;
+    padding-top: 2px;
   }
 }
 .item {

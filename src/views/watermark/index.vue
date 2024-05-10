@@ -39,7 +39,7 @@
               <div v-show="!skeletonLoading" class="row-name flex-align" @click="tableClickRow(scope.row)">
                 <svg-icon name="PICTURE" v-if="scope.row.type === 'PICTURE'" class="svg-icon"></svg-icon>
                 <svg-icon name="MP4" v-else-if="scope.row.type === 'VIDEO'" class="svg-icon"></svg-icon>
-                <svg-icon name="Folder" v-else-if="scope.row.type === 'FOLDER'" class="svg-icon"></svg-icon>
+                <svg-icon name="FOLDER" v-else-if="scope.row.type === 'FOLDER'" class="svg-icon"></svg-icon>
                 <svg-icon :name="displayFileType(scope.row.name)" v-else class="svg-icon"></svg-icon>
                 <span>{{ scope.row.name }}</span>
               </div>
@@ -155,6 +155,8 @@
       class="dialog-preview"
       :title="dialogTextTitle"
       :destroy-on-close="true"
+      :close-on-click-modal="false"
+      :close-on-press-escape="false"
       top="4vh"
       width="50vw"
     >
@@ -176,8 +178,8 @@
 <script setup>
 import { sizeTostr } from '@/utils'
 import { displayFileType, filterFileType } from '@/utils/file'
-import { getFileList, renameFile } from '@/api/modules/file'
-import { getFolderList, renameFolder } from '@/api/modules/folder'
+import { getFileList, modifyFile } from '@/api/modules/file'
+import { getFolderList, modifyFolder } from '@/api/modules/folder'
 import { downloadFile } from '@/api/modules/file'
 import { ElMessage } from 'element-plus'
 import useFileSelect from '../dataScreen/hooks/useFileSelect.js'
@@ -217,18 +219,24 @@ const currentRow = reactive({
 })
 const filterLevel = key => {
   const levelLabel = {
-    ONE: '无权限-不可见',
-    TWO: '可查看、下载',
-    THREE: '可查看、下载、上传、创建文件夹',
-    FOUR: '可查看、下载、上传、创建、复制、移动、重命名文件夹/文件',
-    FIVE: '最高权限-任意操作'
+    ONE: '不可见',
+    READ_ONLY: '查看',
+    TWO: '查看、上传、创建',
+    THREE: '查看、上传、创建、下载',
+    FOUR: '查看、上传、创建、下载、复制、移动、重命名',
+    FIVE: '最高权限'
   }
   return levelLabel[key]
 }
-let breadcrumbData = ref([])
+let breadcrumbData = ref([
+  {
+    id: 0,
+    name: '全部文件'
+  }
+])
 let skeletonLoading = ref(false)
 const changeFile = row => {
-  const API = row.type === 'FOLDER' ? renameFolder : renameFile
+  const API = row.type === 'FOLDER' ? modifyFolder : modifyFile
 
   API({
     id: row.id,
@@ -243,7 +251,7 @@ const changeFile = row => {
 const getCurtFile = () => {
   const foldId = currentRow.id || 0
   skeletonLoading.value = true
-  let p1 = getFolderList({ parentId: foldId })
+  let p1 = getFolderList({ parentId: foldId, deleted: false })
   let p2 = getFileList({ fileCategoryId: foldId, deleted: false })
   Promise.all([p1, p2])
     .then(res => {
@@ -265,22 +273,20 @@ const getCurtFile = () => {
       })
 
       // 赋值导航面包屑
-      const foldArr = res[0]
-      if (foldArr.length) {
-        breadcrumbData.value = []
-        getChildBread(foldArr[0].parent)
-        breadcrumbData.value.unshift({
-          id: 0,
-          name: '全部文件'
-        })
-      } else {
-        const hasCurrent = breadcrumbData.value.some(item => item.id === currentRow.id)
-        if (!hasCurrent) {
+      if (currentRow.id !== 0) {
+        const currentIndex = breadcrumbData.value.findIndex(item => item.id === currentRow.id)
+        if (currentIndex > -1) {
+          //删除当前点击之后的
+          breadcrumbData.value.splice(currentIndex + 1)
+        } else {
           breadcrumbData.value.push({
             id: currentRow.id,
             name: currentRow.name
           })
         }
+      } else {
+        //全部文件只保留一项
+        breadcrumbData.value.splice(1)
       }
 
       //文件

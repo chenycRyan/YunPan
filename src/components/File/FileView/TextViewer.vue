@@ -1,9 +1,12 @@
 <template>
   <div id="zfile-monaco-editor" class="editor" />
+  <el-icon v-if="showLoading" class="is-loading">
+    <Loading />
+  </el-icon>
 </template>
 
 <script setup>
-import { onMounted, ref, onUnmounted } from 'vue'
+import { ref, onUnmounted } from 'vue'
 
 // import * as monaco from 'monaco-editor';
 // 按需加载核心 api
@@ -38,15 +41,22 @@ const props = defineProps({
   fileId: Number,
   fileName: String
 })
+let showLoading = ref(false)
 watch(
   () => props.fileId,
   val => {
     // 挂载时，加载文件内容，并初始化
     if (val) {
-      getFileOrion(val).then(res => {
-        fileContent.value = res
-        initMonaco()
-      })
+      showLoading.value = true
+      getFileOrion(val)
+        .then(res => {
+          fileContent.value = res
+          showLoading.value = false
+          initMonaco()
+        })
+        .catch(() => {
+          showLoading.value = false
+        })
     }
   },
   { immediate: true }
@@ -90,5 +100,11 @@ let initMonaco = () => {
 <style lang="scss" scoped>
 #zfile-monaco-editor {
   height: 80vh;
+}
+.is-loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
 }
 </style>

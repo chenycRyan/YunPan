@@ -1,5 +1,5 @@
 <template>
-  <div :class="showLoading && 'flex-center'">
+  <div :class="showLoading && 'video_container'">
     <div class="artplayer-app"></div>
 
     <el-icon v-if="showLoading" class="is-loading">
@@ -31,7 +31,7 @@ import Artplayer from 'artplayer'
 import { ElLoading, ElMessage } from 'element-plus'
 import flvjs from 'flv.js'
 import Hls from 'hls.js'
-import { downloadFile, downLoadSmallFile } from '@/api/modules/file'
+import { downloadFile, downLoadFfmpegFile } from '@/api/modules/file'
 import { GlobalStore } from '@/stores'
 import axios from 'axios'
 const globalStore = GlobalStore()
@@ -66,7 +66,7 @@ watch(
         await nextTick()
         source.value = axios.CancelToken.source()
         // waterMarkPath: `${props.shardingList[0]}`
-        downLoadSmallFile(
+        downLoadFfmpegFile(
           {
             path: props.shardingList[0],
             fileFolderId: val,
@@ -81,24 +81,18 @@ watch(
           initArtPlayer(props.fileName, window.URL.createObjectURL(fileBlob))
           showLoading.value = false
         })
-        // loadingInstance.close()
       } else {
         showLoading.value = true
-        // const loadingInstance = ElLoading.service({
-        //   text: '加载中...',
-        //   background: 'rgba(0, 0, 0, .3)'
-        // })
+
         downloadFile(val)
           .then(res => {
             console.log(new Blob([res]))
             initArtPlayer(props.fileName, window.URL.createObjectURL(new Blob([res])))
             console.log('url', window.URL.createObjectURL(new Blob([res])))
             showLoading.value = false
-            // loadingInstance.close()
           })
           .catch(() => {
             showLoading.value = false
-            // loadingInstance.close()
           })
       }
     }
@@ -317,12 +311,14 @@ const initArtPlayer = async (name, url) => {
 </script>
 
 <style scoped lang="scss">
-.flex-center {
+.artplayer-app {
+  height: 70vh;
+}
+.video_container {
   display: flex;
   justify-content: center;
   align-items: center;
-}
-.artplayer-app {
-  height: 70vh;
+  width: 100%;
+  height: 100%;
 }
 </style>

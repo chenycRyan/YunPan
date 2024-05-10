@@ -17,14 +17,23 @@ export const staticRouter: RouteRecordRaw[] = [
       title: '登录页'
     }
   },
-  // {
-  //   path: '/home',
-  //   name: 'home',
-  //   component: () => import('@/views/home/index.vue'),
-  //   meta: {
-  //     title: '首页'
-  //   }
-  // },
+  {
+    path: '/license',
+    name: 'license',
+    component: () => import('@/views/license/index.vue'),
+    meta: {
+      title: '系统授权'
+    }
+  },
+
+  {
+    path: '/test',
+    name: 'test',
+    component: () => import('@/views/test/index.vue'),
+    meta: {
+      title: 'test'
+    }
+  },
   {
     path: '/share',
     name: 'share',

@@ -8,11 +8,6 @@ export const getFolderList = <U extends Object, T>(params: U) => {
 export const getSonFolder = <T>(params: any) => {
   return http.get<T>(`/file-category/batch/son`, params)
 }
-
-// * 文件夹重命名或移动
-export const renameFolder = (data: any) => {
-  return http.post(`/file-category/update`, data)
-}
 // * 文件夹批量删除(假删)
 export const batchDeleteFolder = (data: any, flag: boolean = true) => {
   return http.delete(`/file-category/batch`, null, {
@@ -39,4 +34,27 @@ export const batchCopyFolder = (data: any) => {
 // * 文件夹创建
 export const addFolder = (data: any) => {
   return http.post(`/file-category`, data)
+}
+// * 修改文件夹-重命名/移动/权限
+export const modifyFolder = (data: any) => {
+  return http.post(`/file-category/update`, data)
+}
+// * 批量公开修改文件夹权限
+export const batchSetFolder = (ids: string, currentId: number) => {
+  return http.post(`/file-category/update/common?ids=${ids}&currentId=${currentId}`)
+}
+
+// * 批量添加文件夹
+export const batchAddFolder = (data: any) => {
+  return http.post(`/file-category/path/batch/son`, data)
+}
+
+// * 查询文件下的各类文件数量
+export const calculateFolder = (id: number) => {
+  return http.get(`/file-category/calculate?id=${id}`)
+}
+
+// * 查询公用文件
+export const getCommomFolder = () => {
+  return http.get(`/file-category/find/common`)
 }

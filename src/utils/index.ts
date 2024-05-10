@@ -338,7 +338,7 @@ export function filterEnum(
  * @param {String} fileName 文件名称
  */
 export function downloadFromStream(content: any, fileName: any) {
-  const blob = new Blob([content])
+  const blob = new Blob([content], { type: 'application/octet-stream' })
   // >= IE11 || Edge 浏览器下载
   if ('msSaveOrOpenBlob' in navigator) {
     console.log('use msSaveOrOpenBlob download...')
@@ -349,6 +349,7 @@ export function downloadFromStream(content: any, fileName: any) {
   eLink.download = fileName
   eLink.style.display = 'none'
   eLink.href = URL.createObjectURL(blob)
+
   document.body.appendChild(eLink)
   eLink.click()
   URL.revokeObjectURL(eLink.href) // 释放URL对象

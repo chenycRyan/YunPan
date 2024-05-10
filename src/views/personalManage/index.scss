@@ -19,16 +19,14 @@
 	flex-wrap: nowrap;
 	width: 100%;
 	.group {
-	  width: 210px;
+	  width: 250px;
 	  margin-right: 20px;
 	  :deep(.el-card__body){
-		padding: 0 ;
-		padding-right: 10px;
-		padding-bottom: 10px;
+		padding: 10px;
 	  }
 	}
 	.person {
-	  flex: calc(100% - 230px);
+	  flex: calc(100% - 250px);
 	}
   }
 

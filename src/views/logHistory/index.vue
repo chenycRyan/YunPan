@@ -3,36 +3,41 @@
     <div class="query-condition">
       <el-form :inline="true">
         <el-form-item label="操作类型:">
-          <el-select
-            v-model="queryParams.type"
-            placeholder="请选择操作类型"
-            @change="getLogList()"
-            style="margin-bottom: 12px; margin-right: 12px"
-          >
+          <el-select v-model="queryParams.type" placeholder="请选择操作类型" clearable @change="getLogList">
             <el-option label="全部" value="" />
             <el-option v-for="(value, key) in opreationType" :key="key" :label="value" :value="key" />
           </el-select>
         </el-form-item>
-        <!-- <el-form-item label="查询文件:">
-      <el-upload
-        class="upload-demo"
-        accept="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        :action='fileTraceUrl'
-        :headers='headers'
-        :on-success="getTraceFileId"
-        :on-error="getTraceFailed"
-        :show-file-list='true'
-        v-model:file-list="fileList"
-      >
-        <el-button type="primary" title="仅支持 docx/xlsx/ppt/pdf 格式文件的查询">选择查询文件</el-button>
-      </el-upload>
-    </el-form-item>
-    <el-form-item style='margin-top:-10px'>
-      <el-button type="primary" @click="getLogList">点击查询</el-button>
-    </el-form-item> -->
+        <el-form-item label="日志类型:">
+          <el-select v-model="queryParams.level" placeholder="请选择日志类型" clearable @change="getLogList">
+            <el-option label="全部" value="" />
+            <el-option label="记录" value="INFO" />
+            <el-option label="异常" value="ERROR" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="所属部门:" v-if="isAdmin || isManage">
+          <el-select v-model="depId" placeholder="请选择所属部门" @change="getUser" clearable>
+            <el-option v-for="item in depList" :key="item.id" :label="item.name" :value="item.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="操作人员:" v-if="(isAdmin || isManage) && depId">
+          <div class="pom">
+            <el-select
+              v-model="queryParams.createdBy"
+              placeholder="请选择操作人员"
+              @change="getLogList"
+              clearable
+              :class="depId && !queryParams.createdBy ? 'border-red' : ''"
+            >
+              <el-option v-for="item in userList" :key="item.id" :label="item.realName" :value="item.id" />
+            </el-select>
+            <div class="tip" v-if="depId && !queryParams.createdBy">选择部门后，请选择人员！</div>
+          </div>
+        </el-form-item>
+        <el-form-item><el-button type="primary" class="ml-10" @click="getLogList">查询</el-button></el-form-item>
       </el-form>
     </div>
-    <el-table stripe :data="logList" style="width: 100%">
+    <el-table stripe :data="logList" v-loading="tableLoading" style="width: 100%">
       <el-table-column prop="createdTime" width="180" align="center">
         <template #header>
           <el-icon>
@@ -57,6 +62,19 @@
           </div>
         </template>
       </el-table-column>
+
+      <el-table-column width="150" align="center">
+        <template #header>
+          <el-icon><User /></el-icon>
+          <span>操作人员</span>
+        </template>
+        <template #default="scope">
+          <div>
+            {{ scope.row.createdByName }}
+          </div>
+        </template>
+      </el-table-column>
+
       <el-table-column>
         <template #header>
           <el-icon>
@@ -96,25 +114,22 @@
   </el-card>
 </template>
 
-<script setup lang="ts">
-import { ElMessage, ElMessageBox } from 'element-plus'
+<script setup>
+import { ElMessage, vLoading, ElMessageBox } from 'element-plus'
+import { getAuthDepartment } from '@/api/modules/department'
+import { getUserList } from '@/api/modules/user'
 import { dateToString } from '@/utils/dateTool'
 import { getfileLogPage, deletefileLogById } from '@/api/modules/file'
 import { GlobalStore } from '@/stores'
 const globalStore = GlobalStore()
-const tableRowClassName = ({ row, rowIndex }: { row: any; rowIndex: number }) => {
-  if (rowIndex % 2 === 0) {
-    return 'warning-row'
-  } else {
-    return 'success-row'
-  }
-}
+const { isAdmin, isManage } = storeToRefs(globalStore)
 let fileTraceUrl = ref('')
 let headers = ref({
   Authorization: ''
 })
-let fileList = ref([])
+
 let queryParams = ref({
+  createdBy: null,
   endTime: '',
   fileFolderId: '',
   level: '',
@@ -145,18 +160,31 @@ let opreationType = ref({
   MOVE_CATEGORY: '移动文件夹',
   AUTH_CATEGORY: '赋予权限'
 })
-watch(
-  () => fileList.value.length,
-  length => {
-    console.log(fileList.value)
-  }
-)
+
 onMounted(() => {
   fileTraceUrl.value = window.appsetings.base_URL + '/file/get/file-type'
   headers.value.Authorization = 'Bearer' + globalStore.token
   getLogList()
+  getDepartment()
 })
+let depId = ref('')
+let depList = ref([])
+const getDepartment = () => {
+  getAuthDepartment().then(res => {
+    depList.value = res
+  })
+}
+let userList = ref([])
+const getUser = () => {
+  queryParams.value.createdBy = ''
+
+  getUserList({ depIds: depId.value }).then(res => {
+    userList.value = res
+  })
+}
+
 let logList = ref([])
+let tableLoading = ref(true)
 const getLogList = () => {
   const query = {}
   Object.keys(queryParams.value).forEach(key => {
@@ -164,28 +192,34 @@ const getLogList = () => {
       query[key] = queryParams.value[key]
     }
   })
-  getfileLogPage({ ...query, isDeleted: false, sort: 'createdTime,DESC' }).then((res: any) => {
-    if (res && res.content && res.content.length) {
-      res.content.forEach((ele: any) => {
-        ele.createdTime = dateToString(ele.createdTime)
-        ele.lastUpdatedTime = dateToString(ele.lastUpdatedTime)
-        ele.type = opreationType.value[ele.type]
-        console.log(ele.type)
-      })
-    }
-    pageInfo.value.totalNum = res.totalElements
-    logList.value = res.content
-    console.log(logList)
-  })
+  tableLoading.value = true
+  getfileLogPage({ ...query, isDeleted: false, sort: 'createdTime,DESC' })
+    .then(res => {
+      tableLoading.value = false
+      if (res && res.content && res.content.length) {
+        res.content.forEach(ele => {
+          ele.createdTime = dateToString(ele.createdTime)
+          ele.lastUpdatedTime = dateToString(ele.lastUpdatedTime)
+          ele.type = opreationType.value[ele.type]
+          console.log(ele.type)
+        })
+      }
+      pageInfo.value.totalNum = res.totalElements
+      logList.value = res.content
+      console.log(logList)
+    })
+    .catch(() => {
+      tableLoading.value = false
+    })
 }
-function handleDelete(row: any) {
+function handleDelete(row) {
   ElMessageBox.confirm('确定删除此条日志么?', '警告', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
   })
     .then(() => {
-      deletefileLogById(row.id).then(res => {
+      deletefileLogById(row.id).then(() => {
         ElMessage.success('删除成功')
         getLogList()
       })
@@ -197,52 +231,29 @@ function handleDelete(row: any) {
       })
     })
 }
-function handleSizeChange(val: any) {
+function handleSizeChange(val) {
   queryParams.value.size = val
   getLogList()
 }
-function handleCurrentChange(val: any) {
+function handleCurrentChange(val) {
   queryParams.value.page = val - 1
   getLogList()
-}
-function getTraceFileId(response: any) {
-  let resultArr = []
-  if (response) {
-    resultArr = response.split('_')
-    if (!resultArr[2]) {
-      ElMessage({
-        message: '查询失败',
-        type: 'error'
-      })
-      logList.value = []
-      queryParams.value.fileFolderId = ''
-      return
-    }
-    queryParams.value.fileFolderId = resultArr[2]
-    queryParams.value.page = 0
-    queryParams.value.size = 10
-    getLogList()
-  } else {
-    ElMessage({
-      message: '查询失败',
-      type: 'error'
-    })
-    logList.value = []
-    queryParams.value.fileFolderId = ''
-  }
-}
-function getTraceFailed(error: any) {
-  console.log(error)
-  ElMessage({
-    message: '查询失败',
-    type: 'error'
-  })
-  logList.value = []
-  queryParams.value.fileFolderId = ''
 }
 </script>
 
 <style scoped lang="scss">
+.border-red {
+  border: 1px solid red;
+}
+.pom {
+  position: relative;
+}
+.tip {
+  font-size: 12px;
+  position: absolute;
+  bottom: -28px;
+  color: red;
+}
 .main {
   margin-top: 40px;
   margin-bottom: 40px;

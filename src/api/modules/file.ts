@@ -2,8 +2,17 @@ import http from '@/api'
 import qs from 'qs'
 import axios from 'axios'
 const source = axios.CancelToken.source()
-
+//@ts-expect-error
+const url = window.appsetings.base_URL
 export { source }
+
+export const getDownloadUrl = (id: number) => {
+  return `${url}/vita/${id}/download`
+}
+// * 获取文件上传地址
+export const getUploadUrl: any = () => {
+  return `${url}/file/upload`
+}
 // * 查询列表
 export const getFileList = (params: any) => {
   const obj: { [key: string]: any } = {}
@@ -14,13 +23,11 @@ export const getFileList = (params: any) => {
   })
   return http.get(`/file-folder/auth/list`, obj)
 }
-/**
- * @name 文件上传
- */
+
 // * 文件上传
-export const uploadFile = (id: number, type: string, data: any) => {
-  let str = `?type=${type}`
-  if (id) str = str + `&fileCategoryId=${id}`
+export const uploadFile = (id: number, type: string, authType: string, data: any) => {
+  let str = `?type=${type}&fileCategoryId=${id}&authType=${authType}`
+
   return http.post(`/file-folder/folder/upload${str}`, data, {
     headers: { 'Content-Type': 'multipart/form-data' }
   })
@@ -55,9 +62,14 @@ export const batchCopyFile = (data: any) => {
   return http.post(`/file-folder/batch/copy`, data)
 }
 // * 重命名文件
-export const renameFile = (data: any) => {
+export const modifyFile = (data: any) => {
   return http.post(`/file-folder/update`, data)
 }
+// * 批量公开修改文件权限
+export const batchSetFile = (ids: string) => {
+  return http.post(`/file-folder/update/common?ids=${ids}`)
+}
+
 // * 检查文件是否存在
 export const checkFileByMd5 = (params: any) => {
   return http.get(`/file/check`, params)
@@ -85,9 +97,8 @@ export const uploadChunkFile = (chunkForm: chunkForm, data: any) => {
   })
 }
 // * 绑定大文件到文件夹
-export const bindBigFile = (fileCategoryId: string, fileId: string) => {
-  let str = `?fileId=${fileId}`
-  if (fileCategoryId) str = str + `&fileCategoryId=${fileCategoryId}`
+export const bindBigFile = (fileCategoryId: number, fileId: number, fileName: string, authType: string) => {
+  let str = `?fileId=${fileId}&fileName=${fileName}&fileCategoryId=${fileCategoryId}&authType=${authType}`
   return http.post(`/file-folder/folder/big/upload${str}`)
 }
 
@@ -102,33 +113,21 @@ interface downloadForm {
 export const downloadBigFile = (data: downloadForm) => {
   return http.post(`/file/big/download`, data, { responseType: 'blob' })
 }
-
-/**
- * @name 小文件上传
- */
-// * 小文件上传
-export const uploadSmallFile = (formData: any) => {
+// 视频切片上传
+export const uploadFfmpegFile = (formData: any) => {
   return http.post(`/file/upload/ffmpeg`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   })
 }
-
-/**
- * @name 小文件下载接口
- */
-// * 小文件下载
-export const downLoadSmallFile = (params: any, config: any) => {
+// * 视频切片下载
+export const downLoadFfmpegFile = (params: any, config: any) => {
   return http.get(`/file/download/ffmpeg`, params, {
     responseType: 'blob',
     ...config
   })
 }
-
-/**
- * @name 小文件新增接口
- */
-// * 小文件上传
-export const addSmallFile = (data: any) => {
+// *整合添加视频切片路径，返回视频文件ID
+export const addVideoChunks = (data: any) => {
   return http.post(`/file`, data)
 }
 
@@ -207,8 +206,8 @@ export const deletefileLogById = (id: number) => {
  * 增加文件操作日志
  * @params {Object} level: 'info', message: 'string', type:'CREATE_FILE'
  */
-export const addfileLogById = (params: object) => {
-  return http.post(`/file-log`, params)
+export const addfileLog = (data: any) => {
+  return http.post(`/file-log`, data)
 }
 /**
  * 文件溯源

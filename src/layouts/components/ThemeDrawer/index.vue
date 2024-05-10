@@ -1,7 +1,7 @@
 <template>
   <el-drawer v-model="drawerVisible" title="布局设置" size="300px">
     <!-- 布局切换 -->
-    <el-divider class="divider" content-position="center">
+    <!-- <el-divider class="divider" content-position="center">
       <el-icon><Notification /></el-icon>
       布局切换
     </el-divider>
@@ -53,7 +53,7 @@
           <el-icon v-if="themeConfig.layout == 'columns'"><CircleCheckFilled /></el-icon>
         </div>
       </el-tooltip>
-    </div>
+    </div> -->
     <br />
 
     <!-- 全局主题 -->

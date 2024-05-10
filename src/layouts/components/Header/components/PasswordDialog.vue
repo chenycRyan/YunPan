@@ -1,5 +1,12 @@
 <template>
-  <el-dialog v-model="dialogVisible" title="修改密码" width="500px" draggable>
+  <el-dialog
+    v-model="dialogVisible"
+    :close-on-click-modal="false"
+    :close-on-press-escape="false"
+    title="修改密码"
+    width="500px"
+    draggable
+  >
     <span>This is Password</span>
     <template #footer>
       <span class="dialog-footer">

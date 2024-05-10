@@ -1,7 +1,7 @@
 :deep() {
   .el-container {
     height: calc(100% - 80px);
-    max-width: 1400px;
+    max-width: 1600px;
     position: relative;
     margin: 0 auto;
     width: 100%;
@@ -34,7 +34,7 @@
     font-size: 1rem;
     line-height: 1.5rem;
     top: 0.125rem;
-    margin-right: 0.5rem;
+    margin-right: 0.3rem;
   }
 
   .el-divider--vertical {
@@ -51,8 +51,8 @@
   }
   .dialog-preview{
    .el-dialog__body{
-      height: 75vh;
-      overflow: auto;
+      height: 80vh;
+      overflow-x: hidden;
     }
   }
  .el-input__wrapper {
@@ -97,6 +97,17 @@
     }
   }
  
+}
+.pagination_box{
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  font-size: 14px;
+  color: #909399;
+  .ml-10{
+    margin-left: 10px;
+  }
 }
 
 .w-200{
@@ -192,6 +203,7 @@
   margin-left: 3px;
 }
 .levelImg{
-  width: 20px;
-  height: 20px;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
 }

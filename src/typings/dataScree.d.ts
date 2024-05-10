@@ -12,6 +12,7 @@ declare namespace FileSpace {
     type: string
     parent?: RowItf
     auth?: string
+    type?: string
     userFileAuthVo?: AuthVo
     [key: string]: any
   }
@@ -26,6 +27,7 @@ declare namespace FileSpace {
     id: number
     name?: string
     parent?: any
+    type?: string
   }
 }
 // * File

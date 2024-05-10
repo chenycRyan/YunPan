@@ -4,7 +4,6 @@
 		{
 			"path": "/home",
 			"name": "home",
-			"redirect": "/personalManage",
 			"meta": {
 				"title": "首页",
 				"isLink": "",
@@ -55,6 +54,32 @@
 			}
 		},
 		{
+			"path": "/noticeManage",
+			"name": "noticeManage",
+			"component": "/noticeManage/index",
+			"meta": {
+				"title": "系统通知",
+				"isLink": "",
+				"isHide": false,
+				"isFull": false,
+				"isAffix": false,
+				"isKeepAlive": true
+			}
+		},
+		{
+			"path": "/notice",
+			"name": "notice",
+			"component": "/notice/index",
+			"meta": {
+				"title": "系统通知",
+				"isLink": "",
+				"isHide": true,
+				"isFull": true,
+				"isAffix": false,
+				"isKeepAlive": true
+			}
+		},
+		{
 			"path": "/fileTrace",
 			"name": "fileTrace",
 			"component": "/fileTrace/index",
@@ -75,6 +100,32 @@
 				"title": "操作日志",
 				"isLink": "",
 				"isHide": false,
+				"isFull": false,
+				"isAffix": false,
+				"isKeepAlive": true
+			}
+		},
+    {
+			"path": "/onlineUser",
+			"name": "onlineUser",
+			"component": "/onlineUser/index",
+			"meta": {
+				"title": "登录日志",
+				"isLink": "",
+				"isHide": false,
+				"isFull": false,
+				"isAffix": false,
+				"isKeepAlive": true
+			}
+		},
+    {
+			"path": "/serviceMonitoring",
+			"name": "serviceMonitoring",
+			"component": "/serviceMonitoring/index",
+			"meta": {
+				"title": "服务监控",
+				"isLink": "",
+				"isHide": true,
 				"isFull": false,
 				"isAffix": false,
 				"isKeepAlive": true

@@ -46,11 +46,11 @@ export default defineConfig(({ command, mode }: ConfigEnv): UserConfig => {
       // 跨域代理配置
       proxy: {
         '/wangpanApi': {
-          target: 'https://www.huiborobot.com.cn:3183', // easymock
-          // target: "https://www.fastmock.site/mock/f81e8333c1a9276214bcdbc170d9e0a0", // fastmock
+          //  target: 'https://www.huiborobot.com.cn:3183/wangpanApi',
+          target: 'http://192.168.0.52:9113',
           changeOrigin: true,
           ws: true,
-          rewrite: path => path.replace(/^\/api/, '')
+          rewrite: path => path.replace(/^\/wangpanApi/, '')
         }
       }
     },

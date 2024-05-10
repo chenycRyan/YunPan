@@ -1,5 +1,12 @@
 <template>
-  <el-dialog v-model="dialogVisible" :title="dialogTitle" width="30%" :before-close="handleClose">
+  <el-dialog
+    v-model="dialogVisible"
+    :close-on-click-modal="false"
+    :close-on-press-escape="false"
+    :title="dialogTitle"
+    width="30%"
+    :before-close="handleClose"
+  >
     <el-form :model="ruleForm" label-width="80px" label-position="left">
       <el-form-item label="有效期：">
         <el-radio-group v-model="ruleForm.status">
@@ -31,11 +38,22 @@
     <el-divider v-show="showLink"></el-divider>
     <div class="share-box" v-show="showLink">
       <el-alert title="文档分享已开启" type="success" show-icon :closable="false"> </el-alert>
-      <el-input v-model="link" readonly class="mt-10">
-        <template #append>
-          <el-button v-copy="link">复制</el-button>
-        </template>
-      </el-input>
+      <div class="flex-center">
+        <div class="label">链接：</div>
+        <el-input v-model="link" readonly class="mt-10">
+          <template #append>
+            <el-button v-copy="link">复制</el-button>
+          </template>
+        </el-input>
+      </div>
+      <div class="flex-center">
+        <div class="label">提取码：</div>
+        <el-input v-model="code" readonly class="mt-10">
+          <template #append>
+            <el-button v-copy="code">复制</el-button>
+          </template>
+        </el-input>
+      </div>
     </div>
   </el-dialog>
 </template>
@@ -67,7 +85,7 @@ let timeLimit = ref([
     label: '永久'
   }
 ])
-onMounted(() => {})
+
 const ruleForm = reactive({
   status: 'A_DAY',
   type: '系统随机生成提取码',
@@ -122,8 +140,10 @@ const handleClose = () => {
 }
 
 let link = ref('')
-const setLink = (id: number, code: string) => {
-  link.value = `${window.location.href.split('#')[0]}#/share?id=${id} 提取码: ${code}`
+let code = ref('')
+const setLink = (id: number, verCode: string) => {
+  link.value = `${window.location.href.split('#')[0]}#/share?id=${id}`
+  code.value = verCode
 }
 //随机生成四位字母和数字组成的验证码
 const randomStr = () => {
@@ -193,6 +213,11 @@ defineExpose({ initDialog })
       margin-top: 5px;
     }
   }
+}
+.label {
+  width: 70px;
+  height: 10px;
+  text-align: right;
 }
 .w-100 {
   width: 100px;

@@ -172,7 +172,7 @@ async function addLoading(rawFile) {
     let res = await axios.post(fileTraceUrl.value, formData, { headers: headers.value }).catch(err => {
       ElMessage.warning(err.data || err.message || err)
     })
-    if (res) {
+    if (res && res.data) {
       let resArray = res.data.split('huibo')
       console.log('resArray', resArray)
       let userInfo = await getUserList({ phone: resArray[0] })

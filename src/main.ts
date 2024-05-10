@@ -13,6 +13,9 @@ import ElementPlus from 'element-plus'
 import locale from 'element-plus/es/locale/lang/zh-cn'
 // element icons
 import * as Icons from '@element-plus/icons-vue'
+import 'element-plus/es/components/message/style/css'
+import 'element-plus/es/components/message-box/style/css'
+import 'element-plus/es/components/notification/style/css'
 // element css
 import 'element-plus/dist/index.css'
 // element dark(内置暗黑模式)
@@ -23,23 +26,17 @@ import '@/styles/theme/element-dark.scss'
 import '@/styles/element.scss'
 // custom directives
 import directives from '@/directives/index'
-// vue Router
-import router from '@/routers/index'
-
 // pinia store
 import pinia from '@/stores/index'
+// vue Router
+import router from '@/routers/index'
 // svg icons
 import 'virtual:svg-icons-register'
-// errorHandler
-import errorHandler from '@/utils/errorHandler'
-
 const app = createApp(App)
-
-// app.config.errorHandler = errorHandler
 
 // 注册element Icons组件
 Object.keys(Icons).forEach(key => {
   app.component(key, Icons[key as keyof typeof Icons])
 })
 
-app.use(router).use(pinia).use(directives).use(ElementPlus, { locale }).mount('#app')
+app.use(pinia).use(router).use(directives).use(ElementPlus, { locale }).mount('#app')

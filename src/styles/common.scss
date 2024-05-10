@@ -4,6 +4,7 @@
 	align-items: center;
 	justify-content: center;
 }
+
 .flx-end {
 	display: flex;
 	align-items: center;
@@ -17,6 +18,17 @@
 .flx-align-center {
 	display: flex;
 	align-items: center;
+}
+
+.flex-center{
+	display: flex;
+	align-items: center;
+}
+.just-end{
+	justify-content: flex-end;
+}
+.just-center{
+	justify-content: center;
 }
 
 /* clearfix */

@@ -31,7 +31,7 @@ import { GlobalStore } from '@/stores'
 import { AuthStore } from '@/stores/modules/auth'
 import { ArrowRight } from '@element-plus/icons-vue'
 import { useRoute, useRouter } from 'vue-router'
-import { HOME_URL } from '@/config/config'
+// import { HOME_URL } from '@/config/config'
 
 const route = useRoute()
 const router = useRouter()

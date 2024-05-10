@@ -10,12 +10,16 @@
       <span>我的文件</span>
     </div>
 
-    <ul v-show="!isCollapse">
+    <!-- <ul v-show="!isCollapse">
       <li @click="handleFilterFile('PICTURE')"><svg-icon name="PICTURE"></svg-icon> 图片</li>
       <li @click="handleFilterFile('DOCUMENT')"><svg-icon name="DOCUMENT"></svg-icon>文档</li>
       <li @click="handleFilterFile('VIDEO')"><svg-icon name="VIDEO"></svg-icon>视频</li>
       <li @click="handleFilterFile('OTHER')"><svg-icon name="OTHER"></svg-icon>其他</li>
-    </ul>
+    </ul> -->
+    <div class="aside-line" :class="{ active: cIndex == 6 }" @click="handlePublicFile">
+      <el-icon><FolderOpened /></el-icon>
+      <span>公有文件</span>
+    </div>
     <div class="aside-line" :class="{ active: cIndex == 2 }" @click="handleShare">
       <el-icon><Share /></el-icon>
       <span>我的分享</span>
@@ -35,7 +39,7 @@
   </el-aside>
 </template>
 <script setup>
-const emits = defineEmits(['homePage', 'filterFile', 'backHome', 'recycle', 'browser', 'Star', 'share'])
+const emits = defineEmits(['homePage', 'filterFile', 'backHome', 'recycle', 'browser', 'Star', 'share', 'publicFile'])
 const isCollapse = ref(false)
 let cIndex = ref(0)
 const handleFilterFile = type => {
@@ -69,11 +73,16 @@ onMounted(() => {
       handleRecycle()
 
       break
+    case '6':
+      handlePublicFile()
+
+      break
     default:
       handleHomePage()
       break
   }
 })
+
 const handleHomePage = () => {
   sessionStorage.setItem('cIndex', cIndex.value)
   cIndex.value = 0
@@ -104,7 +113,14 @@ const handleRecycle = () => {
   sessionStorage.setItem('cIndex', cIndex.value)
   emits('recycle')
 }
-defineExpose({ handleShare, handleRecycle, handleBackHome, handleBrowser, handleStar })
+
+const handlePublicFile = () => {
+  cIndex.value = 6
+  sessionStorage.setItem('cIndex', cIndex.value)
+  emits('publicFile')
+}
+
+defineExpose({ handleShare, handleRecycle, handleBackHome, handleBrowser, handleStar, handlePublicFile })
 </script>
 <style lang="scss" scoped>
 .aside {
@@ -135,7 +151,7 @@ defineExpose({ handleShare, handleRecycle, handleBackHome, handleBrowser, handle
     color: #06a7ff;
     background-color: #fff;
     border-radius: 10px;
-    padding: 10px;
+    padding: 16px 10px;
     cursor: pointer;
     display: flex;
     align-items: center;

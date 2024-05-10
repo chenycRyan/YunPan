@@ -31,6 +31,9 @@
       <vue-pdf-embed ref="pdfRef" :source="pdfSource" :page="page" @rendered="handleDocumentRender" />
     </div>
   </div>
+  <el-icon v-if="showLoading" class="is-loading">
+    <Loading />
+  </el-icon>
 </template>
 
 <script setup>
@@ -41,14 +44,21 @@ const props = defineProps({
 })
 // 文件下载路径或Blob对象
 let pdfSource = ref()
+let showLoading = ref(false)
 watch(
   () => props.fileId,
   val => {
     // 挂载时，加载文件内容，并初始化
     if (val) {
-      downloadFile(val).then(res => {
-        pdfSource.value = window.URL.createObjectURL(new Blob([res]))
-      })
+      showLoading.value = true
+      downloadFile(val)
+        .then(res => {
+          showLoading.value = false
+          pdfSource.value = window.URL.createObjectURL(new Blob([res]))
+        })
+        .catch(() => {
+          showLoading.value = false
+        })
     }
   },
   { immediate: true }
@@ -133,5 +143,11 @@ watch(
     border: none;
     cursor: pointer;
   }
+}
+.is-loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
 }
 </style>

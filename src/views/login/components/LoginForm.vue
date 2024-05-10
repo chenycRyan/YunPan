@@ -1,14 +1,14 @@
 <template>
   <el-form ref="loginFormRef" :model="loginForm" :rules="loginRules" size="large">
     <el-form-item prop="username">
-      <el-input v-model="loginForm.username" placeholder="用户名：admin / user">
+      <el-input v-model="loginForm.username" placeholder="用户名">
         <template #prefix>
           <el-icon class="el-input__icon"><user /></el-icon>
         </template>
       </el-input>
     </el-form-item>
     <el-form-item prop="password">
-      <el-input type="password" v-model="loginForm.password" placeholder="密码：123456" show-password autocomplete="new-password">
+      <el-input type="password" v-model="loginForm.password" placeholder="密码" show-password autocomplete="new-password">
         <template #prefix>
           <el-icon class="el-input__icon"><lock /></el-icon>
         </template>
@@ -16,11 +16,12 @@
     </el-form-item>
   </el-form>
   <div class="login-btn">
-    <el-button :icon="CircleClose" round @click="resetForm(loginFormRef)" size="large">重置</el-button>
-    <el-button :icon="UserFilled" round @click="login(loginFormRef)" size="large" type="primary" :loading="loading">
+    <!-- <el-button round @click="openRegister" size="large">注册</el-button> -->
+    <el-button round @click="login(loginFormRef)" size="large" type="primary" style="width: 100%" :loading="loading">
       登录
     </el-button>
   </div>
+  <Register ref="registerRef"></Register>
 </template>
 
 <script setup lang="ts">
@@ -34,12 +35,17 @@ import { getTimeState } from '@/utils'
 import { HOME_URL } from '@/config/config'
 import { initDynamicRouter } from '@/routers/modules/dynamicRouter'
 import { CircleClose, UserFilled } from '@element-plus/icons-vue'
+import Register from './Register.vue'
 import type { ElForm } from 'element-plus'
 
 const route = useRoute()
 const router = useRouter()
 const tabsStore = TabsStore()
 const globalStore = GlobalStore()
+const registerRef = ref()
+const openRegister = () => {
+  registerRef.value.dialogVisible = true
+}
 
 // 定义 formRef（校验规则）
 type FormInstance = InstanceType<typeof ElForm>
@@ -50,7 +56,7 @@ const loginRules = reactive({
 })
 
 const loading = ref(false)
-const loginForm = reactive<Login.ReqLoginForm>({ username: 'admin', password: 'a123456' })
+const loginForm = reactive<Login.ReqLoginForm>({ username: '', password: '' })
 const login = (formEl: FormInstance | undefined) => {
   if (!formEl) return
   formEl.validate(async valid => {
@@ -62,7 +68,6 @@ const login = (formEl: FormInstance | undefined) => {
 
       // 2.添加动态路由
       await initDynamicRouter()
-
       // 3.清除上个账号的 tab 信息
       tabsStore.closeMultipleTab()
       // 4.跳转至前台页面
@@ -88,16 +93,18 @@ const resetForm = (formEl: FormInstance | undefined) => {
   if (!formEl) return
   formEl.resetFields()
 }
+function handleKeyDown(e) {
+  if (e.code === 'Enter' || e.code === 'enter' || e.code === 'NumpadEnter') {
+    if (loading.value) return
+    login(loginFormRef.value)
+  }
+}
 
 onMounted(() => {
-  // 监听enter事件（调用登录）
-  document.onkeydown = (e: any) => {
-    e = window.event || e
-    if (e.code === 'Enter' || e.code === 'enter' || e.code === 'NumpadEnter') {
-      if (loading.value) return
-      login(loginFormRef.value)
-    }
-  }
+  window.addEventListener('keydown', handleKeyDown)
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', handleKeyDown)
 })
 </script>
 

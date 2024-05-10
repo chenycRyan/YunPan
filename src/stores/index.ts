@@ -78,7 +78,7 @@ export const GlobalStore = defineStore({
       if (!this.ffmpeg.isLoaded()) {
         this.ffmpeg.load().catch((err: any) => {
           console.log(err)
-          ElMessage.warning('当前浏览器内存已满，请关闭浏览器后重新访问!')
+          ElMessage.warning('当前浏览器内存超出上限，请关闭浏览器重新开启!')
         })
       }
     },
